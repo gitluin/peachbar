@@ -1,11 +1,6 @@
 #!/bin/bash
 
 name_file="/home/ishmael/.sbar/.name"
-tmp_file="/home/ishmael/.sbar/.tmpname"
-sbarname="$(cat $name_file)"
-
-INFF="/tmp/saralemon.fifo"
-[[ -p $INFF ]] || mkfifo -m 600 "$INFF"
 
 # -------------------------------
 # Set brightness, get ready to update
@@ -22,24 +17,6 @@ bright=$(light -G)
 bright=${bright%.*}
 i=$(( $bright/33 ))
 brightsym="${brightsyms[$i]}"
-echo "$brightsym"
 
-# -------------------------------
-# Update sbar
-
-# Get current xsetroot name
-# LOCK OR SOMETHING HERE
-exec 9>/tmp/sbarlock
-if ! flock -w 5 9 ; then
-	echo "Could not get the lock :("
-	exit 1
-fi
-
-#"VOL: $vol | $brightsym $bright% | $netname | $batsym $bat% | $bardate $bartime"
-sed "s/\S\+/$brightsym/4" "$name_file" > "$tmp_file"
-sed "s/\S\+/$bright%/5" "$tmp_file" > "$name_file"
-
-cat "$name_file" > "$INFF"
-# RELEASE LOCK
-9>&-
-rm -rf /tmp/sbarlock
+/ibin/sbar_update.sh "$(sed "s/\S\+/$brightsym/4" "$name_file")"
+/ibin/sbar_update.sh "$(sed "s/\S\+/$bright%/5" "$name_file")"

@@ -1,12 +1,7 @@
 #!/bin/bash
 
 name_file="/home/ishmael/.sbar/.name"
-tmp_file="/home/ishmael/.sbar/.tmpname"
-sbarname="$(cat $name_file)"
 netstate=$(cat "/sys/class/net/wlp2s0/operstate")
-
-INFF="/tmp/saralemon.fifo"
-[[ -p $INFF ]] || mkfifo -m 600 "$INFF"
 
 # -------------------------------
 # Set network, get ready to update
@@ -29,22 +24,4 @@ else
 	netname="down"
 fi
 
-# -------------------------------
-# Update sbar
-
-# Get current xsetroot name
-# LOCK OR SOMETHING HERE
-exec 9>/tmp/sbarlock
-if ! flock -w 5 9 ; then
-	echo "Could not get the lock :("
-	exit 1
-fi
-
-#"VOL: $vol | $brightsym $bright% | $netname | $batsym $bat% | $bardate $bartime"
-sed "s/\S\+/$netname/7" "$name_file" > "$tmp_file"
-cat "$tmp_file" > "$name_file"
-
-cat "$name_file" > "$INFF"
-# RELEASE LOCK
-9>&-
-rm -rf /tmp/sbarlock
+/ibin/sbar_update.sh "$(sed "s/\S\+/$netname/7" "$name_file")"

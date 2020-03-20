@@ -12,9 +12,6 @@ netstate=$(cat "/sys/class/net/wlp2s0/operstate")
 9>&-
 sudo rm -rf /tmp/sbarlock
 
-INFF="/tmp/saralemon.fifo"
-[[ -p $INFF ]] || mkfifo -m 600 "$INFF"
-
 # -------------------------------------------
 # Initialize xsetroot
 
@@ -63,7 +60,6 @@ echo "$batsym" > "$batsymfile"
 dtime=$(date +'%m-%d-%y %R')
 
 out="VOL: $vol | $brightsym $bright% | $netname | $batsym $bat% | $dtime"
-echo "$out" > "$name_file"
+/ibin/sbar_update.sh "$out"
 
-echo "$out" > "$INFF"
 exec /ibin/sbar_loop.sh

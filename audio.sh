@@ -1,11 +1,6 @@
 #!/bin/bash
 
 name_file="/home/ishmael/.sbar/.name"
-tmp_file="/home/ishmael/.sbar/.tmpname"
-sbarname="$(cat $name_file)"
-
-INFF="/tmp/saralemon.fifo"
-[[ -p $INFF ]] || mkfifo -m 600 "$INFF"
 
 # -------------------------------
 # Set volume, get ready to update
@@ -22,22 +17,4 @@ else
 	vol="${vol::-1}%"
 fi 
 
-# -------------------------------
-# Update sbar
-
-# Get current xsetroot name
-# LOCK OR SOMETHING HERE
-exec 9>/tmp/sbarlock
-if ! flock -w 5 9 ; then
-	echo "Could not get the lock :("
-	exit 1
-fi
-
-#"VOL: $vol | $brightsym $bright% | $netname | $batsym $bat% | $bardate $bartime"
-sed "s/\S\+/$vol/2" "$name_file" > "$tmp_file"
-cat "$tmp_file" > "$name_file"
-
-cat $name_file > "$INFF"
-# RELEASE LOCK
-9>&-
-rm -rf /tmp/sbarlock
+/ibin/sbar_update.sh "$(sed "s/\S\+/$vol/2" "$name_file")"
