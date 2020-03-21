@@ -2,7 +2,7 @@ sbar-lemon
 -----
 This is a collection of shell scripts that were written for use with [sara v3.0+](https://github.com/gitluin/sara). Each script acquires a lock, writes to a shared file to update the bar name, cats out the contents of this file, releases the lock, and then exits (or sleeps in the case of the loop).
 
-To start, I symlink the files from this directory to my custom `/ibin` directory (which is added to `$PATH`) with the prefix `sbar_` and then add `/ibin/start_sbar.sh &` to my `~/.xinitrc` **before** the `exec sara` line. Make sure you change the directory names, etc. to match your system.
+To start, create `~/.sbar/`. Then, I symlink the files from this repository to my custom `/ibin` directory (which is added to `$PATH`) with the prefix `sbar_` and then add `/ibin/start_sbar.sh &` to my `~/.xinitrc` **before** the `exec sara` line. Make sure you change the directory names, etc. to match your system.
 
 Place `battery.rules` in `/etc/udev/rules.d/`. Then, run `sudo udevadm control --reload` to ensure the rules take effect at the moment, or you could reboot. Per the [ArchWiki](https://wiki.archlinux.org/index.php/Udev): "However, the rules are not re-triggered automatically on already existing devices", and last I checked the battery is already existing.
 
