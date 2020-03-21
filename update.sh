@@ -1,27 +1,45 @@
 #!/bin/bash
 
-name_file="/home/ishmael/.sbar/.name"
-tmp_file="/home/ishmael/.sbar/.tmpname"
-
 INFF="/tmp/saralemon.fifo"
-[[ -p $INFF ]] || mkfifo -m 600 "$INFF"
+NAMEFILE="/home/ishmael/.sbar/.name"
+TMPFILE="/home/ishmael/.sbar/.tmpname"
+LOCKFILE="/tmp/sbarlock"
+
+if (( $# % 2 )); then
+	echo "Need value-position pairs!"
+	exit 1
+fi
 
 # -------------------------------
 # Update sbar
 
 # Get current xsetroot name
 # LOCK OR SOMETHING HERE
-exec 9>/tmp/sbarlock
+exec 9>"$LOCKFILE"
 if ! flock -w 5 9 ; then
 	echo "Could not get the lock :("
 	exit 1
 fi
 
-#"VOL: $vol | $brightsym $bright% | $netname | $batsym $bat% | $bardate $bartime"
-echo "$1" > "$tmp_file"
-cat "$tmp_file" > "$name_file"
-cat $name_file > "$INFF"
+FROMFNAME="$NAMEFILE"
+TOFNAME="$TMPFILE"
 
+# For each pair of arguments, sed the shit out of it
+for (( VAL=1; VAL<$#; VAL=$(( VAL + 2 )) )); do
+	POS=$((VAL+1))
+	#"VOL: $VOL | o $BRIGHT% | $NETNAME | $BATSYM $BAT% | $BARDATE $BARTIME"
+	sed "s/\S\+/${!VAL}/${!POS}" "$FROMFNAME" > "$TOFNAME"
+	TMPFNAME="$FROMFNAME"
+	FROMFNAME="$TOFNAME"
+	TOFNAME="$TMPFNAME"
+done
+
+# If we ended on $TMPFILE, update $NAMEFILE
+if [ "$FROMFNAME" = "$TMPFILE" ]; then
+	cat "$TMPFILE" > "$NAMEFILE"
+fi
+
+cat "$NAMEFILE" > "$INFF"
 # RELEASE LOCK
 9>&-
-rm -rf /tmp/sbarlock
+rm -rf "$LOCKFILE"

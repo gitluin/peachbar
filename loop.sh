@@ -1,27 +1,21 @@
 #!/bin/bash
 
-name_file="/home/ishmael/.sbar/.name"
-batcapfile="/sys/class/power_supply/BAT0/capacity"
-batsymfile="/home/ishmael/.sbar/.batsym"
+BATCAPFILE="/sys/class/power_supply/BAT0/capacity"
+BATSYMFILE="/home/ishmael/.sbar/.batsym"
 
 # -------------------------------
 # Set time, get ready to update
 
 while true; do
-	bardate=$(date +'%m-%d-%y')
-	bartime=$(date +'%R')
+	BARDATE=$(date +'%m-%d-%y')
+	BARTIME=$(date +'%R')
 
-	batsym=$(cat $batsymfile) 
-	bat=$(cat $batcapfile)
+	BATSYM=$(cat $BATSYMFILE) 
+	BAT=$(cat $BATCAPFILE)
 
 	# Update network status
 	/ibin/sbar_network.sh
 
-	# Update date and time
-	/ibin/sbar_update.sh "$(sed "s/\S\+/$bardate/12" "$name_file")"
-	/ibin/sbar_update.sh "$(sed "s/\S\+/$bartime/13" "$name_file")"
-
-	# Update battery - status will update whenever it changes
-	/ibin/sbar_update.sh "$(sed "s/\S\+/$batsym/9" "$name_file")"
-	/ibin/sbar_update.sh "$(sed "s/\S\+/$bat%/10" "$name_file")"
+	#"VOL: $VOL | o $BRIGHT% | $NETNAME | $BATSYM $BAT% | $BARDATE $BARTIME"
+	/ibin/sbar_update "$BARDATE" 12 "$BARTIME" 13 "$BATSYM" 9 "$BAT%" 10
 done

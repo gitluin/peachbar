@@ -1,6 +1,5 @@
 #!/bin/bash
 
-name_file="/home/ishmael/.sbar/.name"
 netstate=$(cat "/sys/class/net/wlp2s0/operstate")
 
 # -------------------------------
@@ -24,4 +23,4 @@ else
 	netname="down"
 fi
 
-/ibin/sbar_update.sh "$(sed "s/\S\+/$netname/7" "$name_file")"
+/ibin/sbar_update.sh "$netname" 7

@@ -1,7 +1,5 @@
 #!/bin/bash
 
-name_file="/home/ishmael/.sbar/.name"
-
 # -------------------------------
 # Set volume, get ready to update
 
@@ -13,8 +11,9 @@ if [ "$1" = "mute" ]; then
 else
 	amixer set Master "$2"%"$1" unmute
 	# Skip over the mute symbol
-	vol=$(amixer sget Master | awk -F"[][]" '/dB/ { print $2 }')
+	vol=$(amixer get Master | awk -F"[][]" '/dB/ { print $2 }')
 	vol="${vol::-1}%"
 fi 
 
-/ibin/sbar_update.sh "$(sed "s/\S\+/$vol/2" "$name_file")"
+#"VOL: $vol | o $bright% | $netname | $batsym $bat% | $bardate $bartime"
+/ibin/sbar_update.sh "$vol" 2

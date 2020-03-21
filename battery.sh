@@ -1,26 +1,22 @@
 #!/bin/bash
 
-name_file="/home/ishmael/.sbar/.name"
-batcapfile="/sys/class/power_supply/BAT0/capacity"
-batstatfile="/sys/class/power_supply/BAT0/status"
-batsymfile="/home/ishmael/.sbar/.batsym"
+BATCAPFILE="/sys/class/power_supply/BAT0/capacity"
+BATSTATFILE="/sys/class/power_supply/BAT0/status"
+BATSYMFILE="/home/ishmael/.sbar/.batsym"
 
-# -------------------------------
-# Set battery, get ready to update
-
+# Let me breathe
 sleep 1
 
-batstat=$(cat $batstatfile) 
-bat=$(cat $batcapfile)
-if [ "$batstat" = "Charging" ]; then
-	batsym="CHR:"
-elif [ "$batstat" = "Unknown" ]; then
-	batsym="CHR:"
+BATSTAT=$(cat $BATSTATFILE) 
+BAT=$(cat $BATCAPFILE)
+if [ "$BATSTAT" = "Charging" ]; then
+	BATSYM="CHR:"
+elif [ "$BATSTAT" = "Unknown" ]; then
+	BATSYM="CHR:"
 else 
-	batsym="BAT:"
+	BATSYM="BAT:"
 fi
-echo "$batsym" > "$batsymfile"
+echo "$BATSYM" > "$BATSYMFILE"
 
-#"VOL: $vol | $brightsym $bright% | $netname | $batsym $bat% | $bardate $bartime"
-/ibin/sbar_update.sh "$(sed "s/\S\+/$batsym/9" "$name_file")"
-/ibin/sbar_update.sh "$(sed "s/\S\+/$bat%/10" "$name_file")"
+#"VOL: $VOL | o $BRIGHT% | $NETNAME | $BATSYM $BAT% | $BARDATE $BARTIME"
+/ibin/sbar_update.sh "$BATSYM" 9 "$BAT%" 10
