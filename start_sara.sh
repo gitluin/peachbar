@@ -1,8 +1,5 @@
 #!/bin/bash
 
-OIFS=$IFS
-IFS=" "
-
 EXTDIS="HDMI-0"
 
 TAGS="123456789"
@@ -13,7 +10,10 @@ BARBG="#000000"
 BARFONT="Noto Sans:size=10"
 
 INFF="/tmp/saralemon.fifo"
-[[ -p $INFF ]] || mkfifo -m 600 "$INFF"
+if [[ -e "$INFF" ]] && ! [[ -p "$INFF" ]]; then
+	sudo rm "$INFF"
+fi
+[[ -p "$INFF" ]] || mkfifo -m 600 "$INFF"
 
 # Pass MONLINE, TAGS, LEFTSYM, RIGHTSYM
 MakeTagStr () {
@@ -72,6 +72,4 @@ while read line; do
 done < "$INFF" | lemonbar -g "$BARW"x18+0+0 -d -f "$BARFONT" -p -B "$BARBG" -F "$BARFG" &
 
 # pull information from sara
-sara > "$INFF"
-
-IFS=$OIFS
+exec sara > "$INFF"

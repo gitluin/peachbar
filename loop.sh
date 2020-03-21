@@ -18,4 +18,5 @@ while true; do
 
 	#"VOL: $VOL | o $BRIGHT% | $NETNAME | $BATSYM $BAT% | $BARDATE $BARTIME"
 	/ibin/sbar_update.sh "$BARDATE" 12 "$BARTIME" 13 "$BATSYM" 9 "$BAT%" 10
+	sleep 15
 done
