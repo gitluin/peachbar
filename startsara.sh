@@ -8,11 +8,14 @@ RIGHTSYM=">"
 BARFG="#ffffff"
 BARBG="#000000"
 BARFONT="Noto Sans:size=10"
+BARH=18
+BARX=0
+# Make sure to adjust for BARH if you put the bar on the bottom! (i.e. y_orig = 1080-18)
+BARY=0
 
 INFF="/tmp/saralemon.fifo"
-if [[ -e "$INFF" ]] && ! [[ -p "$INFF" ]]; then
-	sudo rm "$INFF"
-fi
+# Clear out any stale fifos
+[[ -e "$INFF" ]] && ! [[ -p "$INFF" ]] && sudo rm "$INFF"
 [[ -p "$INFF" ]] || mkfifo -m 600 "$INFF"
 
 # Pass MONLINE, TAGS, LEFTSYM, RIGHTSYM
@@ -59,7 +62,7 @@ while read line; do
 		else
 			BARW=1920
 		fi
-	# else, line is sbar info - THIS IS A VERY JANK AND NON-TRIVIAL WAY TO DETECT
+	# else, line is sbar info
 	else
 		BARSTATS="$line"
 	fi
@@ -69,7 +72,7 @@ while read line; do
 	else
 		printf "%s\n" "%{l}$TAGSTR0%{r}$BARSTATS"
 	fi
-done < "$INFF" | lemonbar -g "$BARW"x18+0+0 -d -f "$BARFONT" -p -B "$BARBG" -F "$BARFG" &
+done < "$INFF" | lemonbar -g "$BARW"x"$BARH"+"$BARX"+"$BARY" -d -f "$BARFONT" -p -B "$BARBG" -F "$BARFG" &
 
 # pull information from sara
 exec sara > "$INFF"

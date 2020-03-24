@@ -1,8 +1,8 @@
 #!/bin/bash
 
 INFF="/tmp/saralemon.fifo"
-NAMEFILE="/home/ishmael/.sbar/.name"
-TMPFILE="/home/ishmael/.sbar/.tmpname"
+NAMEFILE=~/.sbar/.name
+TMPFILE=~/.sbar/.tmpname
 LOCKFILE="/tmp/sbarlock"
 
 if (( $# % 2 )); then
@@ -35,11 +35,10 @@ for (( VAL=1; VAL<$#; VAL=$(( VAL + 2 )) )); do
 done
 
 # If we ended on $TMPFILE, update $NAMEFILE
-if [ "$FROMFNAME" = "$TMPFILE" ]; then
-	cat "$TMPFILE" > "$NAMEFILE"
-fi
+[[ "$FROMFNAME" = "$TMPFILE" ]] && cat "$TMPFILE" > "$NAMEFILE"
 
 cat "$NAMEFILE" > "$INFF"
+
 # RELEASE LOCK
 9>&-
 rm -rf "$LOCKFILE"

@@ -3,13 +3,15 @@
 [[ $(pgrep -c "sbar_loop.sh") -ge 1 ]] && exit 1
 
 INFF="/tmp/saralemon.fifo"
-NAMEFILE="/home/ishmael/.sbar/.name"
+NAMEFILE=~/.sbar/.name
 
 # Clear out any stale locks
 9>&-
 sudo rm -rf /tmp/sbarlock
 
-[[ -p $INFF ]] || mkfifo -m 600 "$INFF"
+# Clear out any stale fifos
+[[ -e "$INFF" ]] && ! [[ -p "$INFF" ]] && sudo rm "$INFF"
+[[ -p "$INFF" ]] || mkfifo -m 600 "$INFF"
 
 echo "VOL: NA | o NA% | NA | NA NA% | $(date +'%m-%d-%y %R')" > "$NAMEFILE"
 

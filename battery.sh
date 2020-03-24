@@ -2,20 +2,16 @@
 
 BATCAPFILE="/sys/class/power_supply/BAT0/capacity"
 BATSTATFILE="/sys/class/power_supply/BAT0/status"
-BATSYMFILE="/home/ishmael/.sbar/.batsym"
+BATSYMFILE=~/.sbar/.batsym
 
 # Let me breathe
 sleep 1
 
-BATSTAT=$(cat $BATSTATFILE) 
-BAT=$(cat $BATCAPFILE)
-if [ "$BATSTAT" = "Charging" ]; then
-	BATSYM="CHR:"
-elif [ "$BATSTAT" = "Unknown" ]; then
-	BATSYM="CHR:"
-else 
-	BATSYM="BAT:"
-fi
+BATSTAT="$(cat $BATSTATFILE)"
+BAT="$(cat $BATCAPFILE)"
+
+[[ "$BATSTAT" = "Charging" ]] || [[ "$BATSTAT" = "Unknown" ]] && BATSYM="CHR:" || BATSYM="BAT:"
+
 echo "$BATSYM" > "$BATSYMFILE"
 
 #"VOL: $VOL | o $BRIGHT% | $NETNAME | $BATSYM $BAT% | $BARDATE $BARTIME"
