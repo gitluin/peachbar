@@ -1,8 +1,8 @@
 #!/bin/bash
 
 INFF="/tmp/saralemon.fifo"
-NAMEFILE=~/.sbar/.name
-TMPFILE=~/.sbar/.tmpname
+NAMEFILE="/home/ishmael/.sbar/.name"
+TMPFILE="/home/ishmael/.sbar/.tmpname"
 LOCKFILE="/tmp/sbarlock"
 
 if (( $# % 2 )); then
@@ -10,11 +10,7 @@ if (( $# % 2 )); then
 	exit 1
 fi
 
-# -------------------------------
-# Update sbar
-
-# Get current xsetroot name
-# LOCK OR SOMETHING HERE
+# Get lock
 exec 9>"$LOCKFILE"
 if ! flock -w 5 9 ; then
 	echo "Could not get the lock :("
@@ -35,10 +31,10 @@ for (( VAL=1; VAL<$#; VAL=$(( VAL + 2 )) )); do
 done
 
 # If we ended on $TMPFILE, update $NAMEFILE
-[[ "$FROMFNAME" = "$TMPFILE" ]] && cat "$TMPFILE" > "$NAMEFILE"
+test "$FROMFNAME" = "$TMPFILE" && cat "$TMPFILE" > "$NAMEFILE"
 
 cat "$NAMEFILE" > "$INFF"
 
-# RELEASE LOCK
+# Release lock
 9>&-
 rm -rf "$LOCKFILE"

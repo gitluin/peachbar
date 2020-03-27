@@ -1,18 +1,20 @@
 #!/bin/bash
 
-BATCAPFILE="/sys/class/power_supply/BAT0/capacity"
 BATSTATFILE="/sys/class/power_supply/BAT0/status"
-BATSYMFILE=~/.sbar/.batsym
+BATCAPFILE="/sys/class/power_supply/BAT0/capacity"
 
-# Let me breathe
+# Let udev breathe
 sleep 1
 
 BATSTAT="$(cat $BATSTATFILE)"
 BAT="$(cat $BATCAPFILE)"
 
-[[ "$BATSTAT" = "Charging" ]] || [[ "$BATSTAT" = "Unknown" ]] && BATSYM="CHR:" || BATSYM="BAT:"
+test $BAT -gt 100 && BAT=100
 
-echo "$BATSYM" > "$BATSYMFILE"
+BATSYM="BAT:"
+test "$BATSTAT" = "Charging" || test "$BATSTAT" = "Unknown" && BATSYM="CHR:"
+test "$BATSTAT" = "Full" && BATSYM="CHR:"
 
 #"VOL: $VOL | o $BRIGHT% | $NETNAME | $BATSYM $BAT% | $BARDATE $BARTIME"
-/ibin/sbar_update.sh "$BATSYM" 9 "$BAT%" 10
+# Sudo is necessary when this is run from udev
+sudo /ibin/sbar_update.sh "$BATSYM" 9 "$BAT%" 10

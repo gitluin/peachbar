@@ -15,8 +15,8 @@ BARY=0
 
 INFF="/tmp/saralemon.fifo"
 # Clear out any stale fifos
-[[ -e "$INFF" ]] && ! [[ -p "$INFF" ]] && sudo rm "$INFF"
-[[ -p "$INFF" ]] || mkfifo -m 600 "$INFF"
+test -e "$INFF" && ! test -p "$INFF" && sudo rm "$INFF"
+test -p "$INFF" || sudo mkfifo -m 777 "$INFF"
 
 # Pass MONLINE, TAGS, LEFTSYM, RIGHTSYM
 MakeTagStr () {

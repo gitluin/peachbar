@@ -1,8 +1,5 @@
 #!/bin/bash
 
-BATCAPFILE="/sys/class/power_supply/BAT0/capacity"
-BATSYMFILE=~/.sbar/.batsym
-
 # -------------------------------
 # Set time, get ready to update
 
@@ -10,13 +7,10 @@ while true; do
 	BARDATE="$(date +'%m-%d-%y')"
 	BARTIME="$(date +'%R')"
 
-	BATSYM="$(cat $BATSYMFILE)"
-	BAT="$(cat $BATCAPFILE)"
-
-	# Update network status
+	/ibin/sbar_battery.sh
 	/ibin/sbar_network.sh
 
 	#"VOL: $VOL | o $BRIGHT% | $NETNAME | $BATSYM $BAT% | $BARDATE $BARTIME"
-	/ibin/sbar_update.sh "$BARDATE" 12 "$BARTIME" 13 "$BATSYM" 9 "$BAT%" 10
+	/ibin/sbar_update.sh "$BARDATE" 12 "$BARTIME" 13
 	sleep 15
 done

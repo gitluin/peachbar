@@ -1,17 +1,17 @@
 #!/bin/sh
 
-[[ $(pgrep -c "sbar_loop.sh") -ge 1 ]] && exit 1
+test "$(pgrep -c "sbar_loop.sh")" -ge 1 && exit 1
 
 INFF="/tmp/saralemon.fifo"
-NAMEFILE=~/.sbar/.name
+NAMEFILE="/home/ishmael/.sbar/.name"
 
 # Clear out any stale locks
 9>&-
 sudo rm -rf /tmp/sbarlock
 
 # Clear out any stale fifos
-[[ -e "$INFF" ]] && ! [[ -p "$INFF" ]] && sudo rm "$INFF"
-[[ -p "$INFF" ]] || mkfifo -m 600 "$INFF"
+test -e "$INFF" && ! test -p "$INFF" && sudo rm "$INFF"
+test -p "$INFF" || sudo mkfifo -m 777 "$INFF"
 
 echo "VOL: NA | o NA% | NA | NA NA% | $(date +'%m-%d-%y %R')" > "$NAMEFILE"
 
