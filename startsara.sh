@@ -18,33 +18,6 @@ INFF="/tmp/saralemon.fifo"
 test -e "$INFF" && ! test -p "$INFF" && sudo rm "$INFF"
 test -p "$INFF" || sudo mkfifo -m 777 "$INFF"
 
-# Pass MONLINE, TAGS, LEFTSYM, RIGHTSYM
-MakeTagStr () {
-	local MONLINE="$1"
-	local TAGS="$2"
-	local LEFTSYM="$3"
-	local RIGHTSYM="$4"
-
-	local TAGSTR=""
-
-	# 0:00000000:00000000:[]= -> 00000000:00000000:[]=
-	MONLINE="$(cut -d':' -f2-4 <<<"$MONLINE")"
-	local ISDESKOCC="$(cut -d':' -f1 <<<"$MONLINE")"
-	local ISDESKSEL="$(cut -d':' -f2 <<<"$MONLINE")"
-	local LAYOUTSYM="$(cut -d':' -f3 <<<"$MONLINE")"
-
-	for (( i=0; i<${#ISDESKOCC}; i++ )); do
-		if [ ${ISDESKSEL:$i:1} -eq 1 ]; then
-			TAGSTR="${TAGSTR} $LEFTSYM${TAGS:$i:1}$RIGHTSYM "
-		elif [ ${ISDESKOCC:$i:1} -eq 1 ]; then
-			TAGSTR="${TAGSTR}   ${TAGS:$i:1}   "
-		fi
-	done
-	TAGSTR="${TAGSTR}  $LAYOUTSYM"
-
-	echo "$TAGSTR"
-}
-
 while read line; do
 	MULTI=$(xrandr -q | grep "$EXTDIS" | awk -F" " '{ print $2 }')
 
@@ -52,13 +25,13 @@ while read line; do
 	if [[ "${line:0:1}" =~ ^[0-4].* ]]; then
 		# monitor 0 (lemonbar says it's 1)
 		MONLINE0="$(cut -d' ' -f1 <<<"$line")"
-		TAGSTR0="$(MakeTagStr $MONLINE0 $TAGS $LEFTSYM $RIGHTSYM)"
+		TAGSTR0="$(saratagline.sh $MONLINE0 $TAGS $LEFTSYM $RIGHTSYM)"
 
 		if [ "$MULTI" = "connected" ]; then
 			BARW=3840
 			# monitor 1 (lemonbar says it's 0)
 			MONLINE1="$(cut -d' ' -f2 <<<"$line")"
-			TAGSTR1="$(MakeTagStr $MONLINE1 $TAGS $LEFTSYM $RIGHTSYM)"
+			TAGSTR1="$(saratagline.sh $MONLINE1 $TAGS $LEFTSYM $RIGHTSYM)"
 		else
 			BARW=1920
 		fi
