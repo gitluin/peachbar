@@ -15,4 +15,4 @@ else
 	NETNAME="down"
 fi
 
-/ibin/sbar_update.sh "$NETNAME" 7
+sbar_update.sh "$NETNAME" 7

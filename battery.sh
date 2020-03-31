@@ -17,4 +17,4 @@ test "$BATSTAT" = "Full" && BATSYM="CHR:"
 
 #"VOL: $VOL | o $BRIGHT% | $NETNAME | $BATSYM $BAT% | $BARDATE $BARTIME"
 # Sudo is necessary when this is run from udev
-sudo /ibin/sbar_update.sh "$BATSYM" 9 "$BAT%" 10
+sudo sbar_update.sh "$BATSYM" 9 "$BAT%" 10

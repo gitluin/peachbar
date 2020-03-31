@@ -15,8 +15,8 @@ test -p "$INFF" || sudo mkfifo -m 777 "$INFF"
 
 echo "VOL: NA | o NA% | NA | NA NA% | $(date +'%m-%d-%y %R')" > "$NAMEFILE"
 
-/ibin/sbar_audio.sh "" ""
-/ibin/sbar_bright.sh "" ""
-/ibin/sbar_battery.sh
+sbar_audio.sh "" ""
+sbar_bright.sh "" ""
+sbar_battery.sh
 
-exec /ibin/sbar_loop.sh
+exec sbar_loop.sh

@@ -7,4 +7,4 @@ BRIGHT="$(light -G)"
 BRIGHT="${BRIGHT%.*}"
 
 #"VOL: $VOL | o $BRIGHT% | $NETNAME | $BATSYM $BAT% | $BARDATE $BARTIME"
-/ibin/sbar_update.sh "$BRIGHT%" 5
+sbar_update.sh "$BRIGHT%" 5
