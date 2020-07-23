@@ -1,6 +1,6 @@
 #!/bin/bash
 
-INFF="/tmp/saralemon.fifo"
+INFF="/tmp/peachbar.fifo"
 
 
 # ------------------------------------------
@@ -23,17 +23,17 @@ NETFILE="/sys/class/net/wlp2s0/operstate"
 # Modules
 # ------------------------------------------
 Audio() {
-	local VOL="$(amixer get Master | awk -F"[][]" '/dB/ { print $2 }')"
+	VOL="$(amixer get Master | awk -F"[][]" '/dB/ { print $2 }')"
 	echo "VOL: $VOL"
 }
 
 Battery() {
-	local BATSTAT="$(cat $BATSTATFILE)"
-	local BAT="$(cat $BATCAPFILE)"
+	BATSTAT="$(cat $BATSTATFILE)"
+	BAT="$(cat $BATCAPFILE)"
 
 	test $BAT -gt 100 && BAT=100
 
-	local BATSYM="BAT:"
+	BATSYM="BAT:"
 	test "$BATSTAT" = "Charging" || test "$BATSTAT" = "Unknown" && BATSYM="CHR:"
 	test "$BATSTAT" = "Full" && BATSYM="CHR:"
 
@@ -86,7 +86,7 @@ MODULES="Audio Brightness Network Battery"
 # ------------------------------------------
 # Initialize
 # ------------------------------------------
-test "$(pgrep -c "sbar_lemon.sh")" -ge 1 && exit 0
+test "$(pgrep -c "peachbar.sh")" -ge 1 && exit 0
 
 # Clear out any stale fifos
 test -e "$INFF" && ! test -p "$INFF" && sudo rm "$INFF"
@@ -96,7 +96,10 @@ test -p "$INFF" || sudo mkfifo -m 777 "$INFF"
 # ------------------------------------------
 # Main loop
 # ------------------------------------------
-while 1; do
+# Sleep until 2s up or signal received
+# Useful for updating audio/brightness immediately
+trap 'continue' SIGUSR1
+while true; do
 	STATUSLINE=""
 
 	for MODULE in $MODULES; do
@@ -104,8 +107,9 @@ while 1; do
 	done
 	STATUSLINE="$(echo $STATUSLINE$LDELIM)"
 
-	# Write STATUSLINE to FIFO socket
+	# Write STATUSLINE to FIFO
 	echo "$STATUSLINE" > "$INFF"
 	
-	sleep 2
+	sleep 2 &
+	wait $!
 done
