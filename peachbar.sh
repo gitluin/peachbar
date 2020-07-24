@@ -1,9 +1,5 @@
 #!/bin/bash
 
-# TODO:
-#	1. Command line options (reinitialize, etc.)
-#	2. Config file?
-
 
 INFF="/tmp/peachbar.fifo"
 
@@ -18,7 +14,7 @@ ENDDELIM=""
 
 
 # ------------------------------------------
-# "Define" necessary files for your modules
+# Define necessary files for your modules
 # ------------------------------------------
 BATSTATFILE="/sys/class/power_supply/BAT0/status"
 BATCAPFILE="/sys/class/power_supply/BAT0/capacity"
@@ -31,8 +27,9 @@ NETFILE="/sys/class/net/wlp2s0/operstate"
 Audio() {
 	STATE="$(amixer get Master | awk -F"[][]" '/Left/ { print $4 }')"
 	# NO quotes - drop whitespace
-	test $STATE = "off" && VOL="X"
+	test $STATE = "off" && VOL="X" || \
 		VOL="$(amixer get Master | awk -F"[][]" '/Left/ { print $2 }')"
+
 	echo "VOL: $VOL"
 }
 
@@ -59,7 +56,7 @@ Network() {
 	NETSTATE="$(cat $NETFILE)"
 
 	if [ $NETSTATE = "up" ]; then
-		# bssid comes first, fuhgettaboudit
+		# No double quotes to ignore newline
 		NETNAME="$(sudo wpa_cli -i wlp2s0 status | grep ssid)"
 		NETNAME=$(echo $NETNAME | sed 's/bssid.*ssid/ssid/g' | sed 's/ssid=//g')
 
@@ -104,10 +101,10 @@ test -p "$INFF" || sudo mkfifo -m 777 "$INFF"
 # ------------------------------------------
 # Main loop
 # ------------------------------------------
-# Sleep until 2s up or signal received
+# Sleep until 10s up or signal received
 # Useful for updating audio/brightness immediately
-# TODO: works, but lags behind if holding down keys
 trap 'FLAG=false' SIGUSR1
+FLAG=true
 while true; do
 	STATUSLINE="$BEGINDELIM"
 

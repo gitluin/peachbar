@@ -1,5 +1,6 @@
 #!/bin/sh
 
 # Alert peachbar to update
+# sudo for when called by udev
 # -10 is SIGUSR1
-kill -10 "$(pgrep 'peachbar.sh')"
+sudo kill -10 "$(pgrep 'peachbar.sh')"
