@@ -6,8 +6,8 @@ This is a collection of shell scripts that were written for use with [sara v3.0+
 You should use an `sxhkdrc` like the example in the `sara` repository for `amixer` controls, etc. to properly signal `peachbar` to update.
 * Symlink the files from this repository to `/usr/local/bin/`.
 * Add `peachbar-start.sh &` to `~/.xinitrc` **before** ending the file with `exec sara` or `exec peachbar-startsara.sh`.  
-* Place `peachbar-battery.rules` in `/etc/udev/rules.d/` (Currently this script doesn't work, but I'll fix it).
-* Run `sudo udevadm control --reload` to ensure the rules take effect at the moment, or you could reboot. Per the [ArchWiki](https://wiki.archlinux.org/index.php/Udev): "However, the rules are not re-triggered automatically on already existing devices", and last I checked the battery is already existing. Make sure to replace the `/home/` location in this file with yours.
+* Place `peachbar-battery.rules` in `/etc/udev/rules.d/`.
+* Run `sudo udevadm control --reload` to ensure the rules take effect at the moment, or you could reboot. Per the [ArchWiki](https://wiki.archlinux.org/index.php/Udev): "However, the rules are not re-triggered automatically on already existing devices", and last I checked the battery is already existing. **Make sure to replace the `/home/ishmael/` locations in this file with yours**.
 * To properly integrate with `sara` and `lemonbar`, adjust the `barpx` variable in `sara/config.h` as desired, and then in `~/.xinitrc`, use `exec peachbar-startsara.sh` instead of `exec sara`. This creates an instance of [lemonbar with Xft support](https://github.com/krypt-n/bar) that is identical to the bar that was originally in v1.0.
 	* You will have to install `lemonbar-xft` separately for this to work.
 * Make sure you go over the shell scripts to verify that everything matches your system (like using something other than `amixer` or `light` for audio or brightness).
@@ -19,7 +19,6 @@ You should use an `sxhkdrc` like the example in the `sara` repository for `amixe
 Everything is updated every 10 seconds, unless `peachbar.sh` receives `SIGUSR1`, in which case it updates the status text immediately. This means that audio status, brightness, and battery status are always up-to-date, but without excessive polling.
 
 ## To-Do:
-* `peachbar-battery.rules` does not work. Surprise.
 * Config file?
 * Command line options like reloading config?
 * Status text lags behind if you hold down keys like brightness, etc. (changes too fast).
