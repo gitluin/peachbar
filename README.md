@@ -2,7 +2,8 @@ peachbar
 -----
  ,:.
 (:::)
- \`-'										ascii.co.uk/art/fruit
+\`-'																		
+							ascii.co.uk/art/fruit
 
 This is a collection of shell scripts that were written for use with [sara v3.0+](https://github.com/gitluin/sara). `peachbar.sh` is the heavy-lifter: it currently contains the main loop, the modules, the graphical options, and all initialization tasks. By default, this set of scripts writes `amixer` volume info, `light` brightness info, `wpa_cli` network ssid, and battery info. The script is modular, and all it requires to add different information to the status text is making a new module function in `peachbar.sh` and then adding it to the `MODULES` variable.
 
