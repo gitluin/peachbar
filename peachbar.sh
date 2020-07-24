@@ -1,14 +1,20 @@
 #!/bin/bash
 
+# TODO:
+#	1. Command line options (reinitialize, etc.)
+#	2. Config file?
+
+
 INFF="/tmp/peachbar.fifo"
 
 
 # ------------------------------------------
 # Graphical options
 # ------------------------------------------
-FDELIM=""
-SDELIM=" | "
-LDELIM=""
+BEGINDELIM=""
+STARTDELIM=""
+STOPDELIM=" | "
+ENDDELIM=""
 
 
 # ------------------------------------------
@@ -23,7 +29,10 @@ NETFILE="/sys/class/net/wlp2s0/operstate"
 # Modules
 # ------------------------------------------
 Audio() {
-	VOL="$(amixer get Master | awk -F"[][]" '/dB/ { print $2 }')"
+	STATE="$(amixer get Master | awk -F"[][]" '/Left/ { print $4 }')"
+	# NO quotes - drop whitespace
+	test $STATE = "off" && VOL="X"
+		VOL="$(amixer get Master | awk -F"[][]" '/Left/ { print $2 }')"
 	echo "VOL: $VOL"
 }
 
@@ -51,29 +60,24 @@ Network() {
 
 	if [ $NETSTATE = "up" ]; then
 		# bssid comes first, fuhgettaboudit
-		WPASTR=($(sudo wpa_cli -i wlp2s0 status | grep ssid))
-		NETNAME="${WPASTR[1]}"
-		NETNAME="${NETNAME:5}"
+		NETNAME="$(sudo wpa_cli -i wlp2s0 status | grep ssid)"
+		NETNAME=$(echo $NETNAME | sed 's/bssid.*ssid/ssid/g' | sed 's/ssid=//g')
 
-		for (( i=2; i<${#WPASTR[@]}; i++)); do
-			NETNAME="${NETNAME}_${WPASTR[$i]}"
-		done
 	else
 		NETNAME="down"
 	fi
 
-	echo "$NETNAME"
+	echo $NETNAME
 }
 
 
 # ------------------------------------------
 # "Draw" a module
 # ------------------------------------------
-# TODO: properly allows for all delims?
 # Does not allow for different FDELIM
 #	and splitting delims
 DrawModule() {
-	echo "$FDELIM$1$SDELIM"
+	echo "$STARTDELIM$1$STOPDELIM"
 }
 
 
@@ -86,7 +90,11 @@ MODULES="Audio Brightness Network Battery"
 # ------------------------------------------
 # Initialize
 # ------------------------------------------
-test "$(pgrep -c "peachbar.sh")" -ge 1 && exit 0
+# Kill other peachbar.sh instances
+PEACHPIDS="$(pgrep "peachbar.sh")"
+for PEACHPID in $PEACHPIDS; do
+	! test $PEACHPID = $$ && kill -9 $PEACHPID
+done
 
 # Clear out any stale fifos
 test -e "$INFF" && ! test -p "$INFF" && sudo rm "$INFF"
@@ -98,18 +106,25 @@ test -p "$INFF" || sudo mkfifo -m 777 "$INFF"
 # ------------------------------------------
 # Sleep until 2s up or signal received
 # Useful for updating audio/brightness immediately
-trap 'continue' SIGUSR1
+# TODO: works, but lags behind if holding down keys
+trap 'FLAG=false' SIGUSR1
 while true; do
-	STATUSLINE=""
+	STATUSLINE="$BEGINDELIM"
 
 	for MODULE in $MODULES; do
-		STATUSLINE="$(echo '$STATUSLINE$($MODULE | DrawModule)')"
+		TOADD="$(DrawModule "$($MODULE)")"
+		STATUSLINE="$STATUSLINE$TOADD"
 	done
-	STATUSLINE="$(echo $STATUSLINE$LDELIM)"
+	STATUSLINE=$(echo "$STATUSLINE" | sed "s/$STOPDELIM$//g")
+	STATUSLINE="$(echo $STATUSLINE$ENDDELIM)"
 
 	# Write STATUSLINE to FIFO
 	echo "$STATUSLINE" > "$INFF"
 	
-	sleep 2 &
-	wait $!
+	if $FLAG; then
+		sleep 10 &
+		wait $!
+	else
+		FLAG=true
+	fi
 done

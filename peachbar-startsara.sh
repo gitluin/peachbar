@@ -6,7 +6,7 @@ TAGS="123456789"
 LEFTSYM="<"
 RIGHTSYM=">"
 BARFG="#ffffff"
-BARBG="#000000"
+BARBG="#85000000"
 BARFONT="Noto Sans:size=10"
 BARH=18
 BARX=0
@@ -25,13 +25,13 @@ while read line; do
 	if [[ "${line:0:1}" =~ ^[0-4].* ]]; then
 		# monitor 0 (lemonbar says it's 1)
 		MONLINE0="$(cut -d' ' -f1 <<<"$line")"
-		TAGSTR0="$(saratagline.sh $MONLINE0 $TAGS $LEFTSYM $RIGHTSYM)"
+		TAGSTR0="$(peachbar-parsesara.sh $MONLINE0 $TAGS $LEFTSYM $RIGHTSYM)"
 
 		if [ "$MULTI" = "connected" ]; then
 			BARW=3840
 			# monitor 1 (lemonbar says it's 0)
 			MONLINE1="$(cut -d' ' -f2 <<<"$line")"
-			TAGSTR1="$(saratagline.sh $MONLINE1 $TAGS $LEFTSYM $RIGHTSYM)"
+			TAGSTR1="$(peachbar-parsesara.sh $MONLINE1 $TAGS $LEFTSYM $RIGHTSYM)"
 		else
 			BARW=1920
 		fi
