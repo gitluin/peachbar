@@ -71,8 +71,6 @@ Network() {
 # ------------------------------------------
 # "Draw" a module
 # ------------------------------------------
-# Does not allow for different FDELIM
-#	and splitting delims
 DrawModule() {
 	echo "$STARTDELIM$1$STOPDELIM"
 }
