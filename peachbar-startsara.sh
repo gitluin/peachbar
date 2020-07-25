@@ -28,12 +28,9 @@ while read line; do
 		TAGSTR0="$(peachbar-parsesara.sh $MONLINE0 $TAGS $LEFTSYM $RIGHTSYM)"
 
 		if [ "$MULTI" = "connected" ]; then
-			BARW=3840
 			# monitor 1 (lemonbar says it's 0)
 			MONLINE1="$(cut -d' ' -f2 <<<"$line")"
 			TAGSTR1="$(peachbar-parsesara.sh $MONLINE1 $TAGS $LEFTSYM $RIGHTSYM)"
-		else
-			BARW=1920
 		fi
 	# else, line is peachbar info
 	else
@@ -41,11 +38,11 @@ while read line; do
 	fi
 
 	if [ "$MULTI" = "connected" ]; then
-		printf "%s\n" "%{S0}%{l}$TAGSTR1%{r}$BARSTATS%{S1}%{l}$TAGSTR0%{r}$BARSTATS"
+		printf "%s\n" "%{S0}%{l}${TAGSTR1}%{r}$BARSTATS%{S1}%{l}${TAGSTR0}%{r}$BARSTATS"
 	else
-		printf "%s\n" "%{l}$TAGSTR0%{r}$BARSTATS"
+		printf "%s\n" "%{l}${TAGSTR0}%{r}$BARSTATS"
 	fi
-done < "$INFF" | lemonbar -g "$BARW"x"$BARH"+"$BARX"+"$BARY" -d -f "$BARFONT" -p -B "$BARBG" -F "$BARFG" &
+done < "$INFF" | lemonbar -a 32 -g x"$BARH"+"$BARX"+"$BARY" -d -f "$BARFONT" -B "$BARBG" -F "$BARFG" | sh &
 
 # pull information from sara
 exec sara > "$INFF"

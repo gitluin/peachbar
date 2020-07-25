@@ -1,6 +1,5 @@
 #!/bin/bash
 
-
 INFF="/tmp/peachbar.fifo"
 
 
@@ -11,6 +10,18 @@ BEGINDELIM=""
 STARTDELIM=""
 STOPDELIM=" | "
 ENDDELIM=""
+
+VOLONFG="#ffffff"
+VOLONBG="#4863a0"
+MUTEFG="#ffffff"
+MUTEBG="#F70D1A"
+
+BATFG="#ffffff"
+BATBG=
+CHRFG="#ffffff"
+CHRBG=
+PANICFG="#ffffff"
+PANICBG="#F70D1A"
 
 
 # ------------------------------------------
@@ -28,9 +39,14 @@ Audio() {
 	STATE="$(amixer get Master | awk -F"[][]" '/Left/ { print $4 }')"
 	# NO quotes - drop whitespace
 	test $STATE = "off" && VOL="X" || \
-		VOL="$(amixer get Master | awk -F"[][]" '/Left/ { print $2 }')"
+		VOL="$(amixer get Master | grep 'Front Left:' | \
+			sed 's/.*[0-9] \[/[/' | \
+			sed 's/\] .*/]/' | \
+			sed 's/\[//' | \
+			sed 's/\]//')"
 
-	echo "VOL: $VOL"
+	test $STATE = "off" && echo "%{F$MUTEFG}%{B$MUTEBG}VOL: $VOL%{B-}%{F-}" || \
+		echo "%{F$VOLONFG}%{B$VOLONBG}VOL: $VOL%{B-}%{F-}"
 }
 
 Battery() {
@@ -43,7 +59,13 @@ Battery() {
 	test "$BATSTAT" = "Charging" || test "$BATSTAT" = "Unknown" && BATSYM="CHR:"
 	test "$BATSTAT" = "Full" && BATSYM="CHR:"
 
-	echo "$BATSYM $BAT%"
+	# TODO:
+	if test $BAT -le 10; then
+
+	else
+		test "$BATSYM" = "BAT:" && echo "%{F$BATFG}%{B$BATBG}$BATSYM $BAT%%%{B-}%{F-}" || \
+			echo "%{F$CHRFG}%{B$CHRBG}$BATSYM $BAT%%%{B-}%{F-}"
+	fi
 }
 
 Brightness() {
