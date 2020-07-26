@@ -1,52 +1,52 @@
 #!/bin/bash
 
-INFF="/tmp/peachbar.fifo"
+INFF="$1"
+test -z $INFF && echo "Please provide FIFO as argument" && exit -1
 
 
 # ------------------------------------------
 # Graphical options
 # ------------------------------------------
-BEGINDELIM=""
-STARTDELIM=""
-STOPDELIM=" | "
-ENDDELIM=""
+BARFG="#ffffff"
+# From 00 to 99
+BARALPHA=85
+BARBG="#$BARALPHA""000000"
 
-VOLONFG="#ffffff"
-VOLONBG="#4863a0"
-MUTEFG="#ffffff"
+# Audio
 MUTEBG="#F70D1A"
 
-BATFG="#ffffff"
-BATBG=
-CHRFG="#ffffff"
-CHRBG=
-PANICFG="#ffffff"
+# Battery
+CHRBG="#348017"
 PANICBG="#F70D1A"
 
+# Brightness
+BRIGHTBG="#FFA62F"
 
-# ------------------------------------------
-# Define necessary files for your modules
-# ------------------------------------------
-BATSTATFILE="/sys/class/power_supply/BAT0/status"
-BATCAPFILE="/sys/class/power_supply/BAT0/capacity"
-NETFILE="/sys/class/net/wlp2s0/operstate"
+# Network
+DOWNBG="#F70D1A"
 
 
 # ------------------------------------------
 # Modules
 # ------------------------------------------
+
+# Define necessary files for your modules
+BATSTATFILE="/sys/class/power_supply/BAT0/status"
+BATCAPFILE="/sys/class/power_supply/BAT0/capacity"
+NETFILE="/sys/class/net/wlp2s0/operstate"
+
 Audio() {
 	STATE="$(amixer get Master | awk -F"[][]" '/Left/ { print $4 }')"
 	# NO quotes - drop whitespace
-	test $STATE = "off" && VOL="X" || \
+	test $STATE = "off" && VOL="OFF " || \
 		VOL="$(amixer get Master | grep 'Front Left:' | \
 			sed 's/.*[0-9] \[/[/' | \
 			sed 's/\] .*/]/' | \
 			sed 's/\[//' | \
 			sed 's/\]//')"
 
-	test $STATE = "off" && echo "%{F$MUTEFG}%{B$MUTEBG}VOL: $VOL%{B-}%{F-}" || \
-		echo "%{F$VOLONFG}%{B$VOLONBG}VOL: $VOL%{B-}%{F-}"
+	test $STATE = "off" && echo "%{B$MUTEBG}  VOL: $VOL  %{B-}" || \
+		echo "  VOL: $VOL  "
 }
 
 Battery() {
@@ -59,19 +59,18 @@ Battery() {
 	test "$BATSTAT" = "Charging" || test "$BATSTAT" = "Unknown" && BATSYM="CHR:"
 	test "$BATSTAT" = "Full" && BATSYM="CHR:"
 
-	# TODO:
-	if test $BAT -le 10; then
-
+	if test $BAT -le 10 && test "$BATSYM" = "BAT:"; then
+		echo "%{B$PANICBG}  $BATSYM $BAT%  %{B-}"
 	else
-		test "$BATSYM" = "BAT:" && echo "%{F$BATFG}%{B$BATBG}$BATSYM $BAT%%%{B-}%{F-}" || \
-			echo "%{F$CHRFG}%{B$CHRBG}$BATSYM $BAT%%%{B-}%{F-}"
+		test "$BATSYM" = "BAT:" && echo "  $BATSYM $BAT%  " || \
+			echo "%{B$CHRBG}  $BATSYM $BAT%  %{B-}%"
 	fi
 }
 
 Brightness() {
 	BRIGHT="$(light -G | sed 's/\..*//g')"
 
-	echo "o $BRIGHT%"
+	echo "%{F$BARFG}%{B$BRIGHTBG}  o $BRIGHT%  %{B-}%{F-}"
 }
 
 Network() {
@@ -81,27 +80,21 @@ Network() {
 		# No double quotes to ignore newline
 		NETNAME="$(sudo wpa_cli -i wlp2s0 status | grep ssid)"
 		NETNAME=$(echo $NETNAME | sed 's/bssid.*ssid/ssid/g' | sed 's/ssid=//g')
+		NETNAME="  $NETNAME  "
 
 	else
-		NETNAME="down"
+		NETNAME="%{B$DOWNBG}  down  %{B-}"
 	fi
 
-	echo $NETNAME
+	echo "$NETNAME"
 }
 
-
-# ------------------------------------------
-# "Draw" a module
-# ------------------------------------------
-DrawModule() {
-	echo "$STARTDELIM$1$STOPDELIM"
+Time() {
+	DTIME="$(date +'%m/%d/%y %H:%M')"
+	echo "  $DTIME  "
 }
 
-
-# ------------------------------------------
-# Pick your modules!
-# ------------------------------------------
-MODULES="Audio Brightness Network Battery"
+MODULES="Audio Brightness Network Battery Time"
 
 
 # ------------------------------------------
@@ -113,10 +106,6 @@ for PEACHPID in $PEACHPIDS; do
 	! test $PEACHPID = $$ && kill -9 $PEACHPID
 done
 
-# Clear out any stale fifos
-test -e "$INFF" && ! test -p "$INFF" && sudo rm "$INFF"
-test -p "$INFF" || sudo mkfifo -m 777 "$INFF"
-
 
 # ------------------------------------------
 # Main loop
@@ -126,14 +115,11 @@ test -p "$INFF" || sudo mkfifo -m 777 "$INFF"
 trap 'FLAG=false' SIGUSR1
 FLAG=true
 while true; do
-	STATUSLINE="$BEGINDELIM"
+	STATUSLINE=""
 
 	for MODULE in $MODULES; do
-		TOADD="$(DrawModule "$($MODULE)")"
-		STATUSLINE="$STATUSLINE$TOADD"
+		STATUSLINE="$STATUSLINE$($MODULE)"
 	done
-	STATUSLINE=$(echo "$STATUSLINE" | sed "s/$STOPDELIM$//g")
-	STATUSLINE="$(echo $STATUSLINE$ENDDELIM)"
 
 	# Write STATUSLINE to FIFO
 	echo "$STATUSLINE" > "$INFF"

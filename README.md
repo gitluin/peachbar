@@ -1,14 +1,19 @@
 peachbar
 -----
-This is a collection of shell scripts that were written for use with [sara v3.0+](https://github.com/gitluin/sara). `peachbar.sh` is the heavy-lifter: it currently contains the main loop, the modules, the graphical options, and all initialization tasks. By default, this set of scripts writes `amixer` volume info, `light` brightness info, `wpa_cli` network ssid, and battery info. The script is modular, and all it requires to add different information to the status text is making a new module function in `peachbar.sh` and then adding it to the `MODULES` variable.
+This is a collection of shell scripts that were written for use with [sara v3.0+](https://github.com/gitluin/sara). `peachbar.sh` is the heavy-lifter for the status text: it contains the main status text loop, the modules, their graphical options, and all initialization tasks. By default, this set of scripts writes `amixer` volume info, `light` brightness info, `wpa_cli` network ssid, and battery info. The script is modular, and all it requires to add different information to the status text is making a new module function in `peachbar.sh` and then adding it to the `MODULES` variable.
 
 ## Installation
+### Prerequisites
+* `lemonbar` or some other bar software that you can pipe the output to.
+* `sxhkd` and `sara` if you want `sara` integration.
+
+### Setting up peachbar
 You should use an `sxhkdrc` like the example in the `sara` repository for `amixer` controls, etc. to properly signal `peachbar` to update.
 * Symlink the files from this repository to `/usr/local/bin/`.
-* Add `peachbar-start.sh &` to `~/.xinitrc` **before** ending the file with `exec sara` or `exec peachbar-startsara.sh`.  
+* If you are using `peachbar` without `sara`, add `peachbar-start.sh &` to `~/.xinitrc`. Otherwise, end `~/.xinitrc` with `exec peachbar-startsara.sh`, which will start an instance of [lemonbar with Xft support](https://github.com/krypt-n/bar).
 * Place `peachbar-battery.rules` in `/etc/udev/rules.d/`.
 * Run `sudo udevadm control --reload` to ensure the rules take effect at the moment, or you could reboot. Per the [ArchWiki](https://wiki.archlinux.org/index.php/Udev): "However, the rules are not re-triggered automatically on already existing devices", and last I checked the battery is already existing. **Make sure to replace the `/home/ishmael/` locations in this file with yours**.
-* To properly integrate with `sara` and `lemonbar`, adjust the `barpx` variable in `sara/config.h` as desired, and then in `~/.xinitrc`, use `exec peachbar-startsara.sh` instead of `exec sara`. This creates an instance of [lemonbar with Xft support](https://github.com/krypt-n/bar) that is identical to the bar that was originally in v1.0.
+* To properly integrate with `sara` and `lemonbar`, adjust the `barpx` variable in `sara/config.h` as desired.
 	* You will have to install `lemonbar-xft` separately for this to work.
 * Make sure you go over the shell scripts to verify that everything matches your system (like using something other than `amixer` or `light` for audio or brightness).
 
