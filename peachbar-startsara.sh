@@ -2,16 +2,25 @@
 
 EXTDIS="HDMI-0"
 
+# TODO:
+#	1. Config file in .config/peachbar/peachbarrc
+#		a. Backup scheme in case no config
+#	2. Signal with SIGUSR2 to reload config?
+#	3. Be able to restart peachbar without killing sara
+
 
 # ------------------------------------------
 # Graphical options
 # ------------------------------------------
 
-TAGS="123456789"
+# TODO: will the spacing look okay?
+TAGS="I:II:III:IV:V:VI:VII:VIII:IX"
 
 BARFG="#ffffff"
 # From 00 to 99
-BARALPHA=85
+INFOALPHA=85
+BARALPHA=00
+INFOBG="#$INFOALPHA""000000"
 BARBG="#$BARALPHA""000000"
 
 BARFONT="Noto Sans:size=10"
@@ -28,45 +37,44 @@ BARY=0
 # Parse sara output
 # ------------------------------------------
 ParseSara() {
-	OCCCOLBG="#4E387E"
-	SELCOLBG="#F87217"
+	#OCCCOLBG="#4E387E"
+	#SELCOLBG="#F87217"
+	OCCCOLBG="#FBF6D9"
+	SELCOLBG="#2B65EC"
 
 	LTBUTTONSTART="%{A:sarasock 'setlayout tile':}%{A3:sarasock 'setlayout monocle':}"
 	LTBUTTONEND="%{A}%{A}"
-
-	# TODO: POSIX
-	#	sed/cut for substring-ing
 
 	# Pass MONLINE, TAGS
 	MONLINE="$1"
 	TAGS="$2"
 
-	TAGSTR=""
+	TAGSTR="%{B$INFOBG}"
 
 	# MonNum:OccupiedDesks:SelectedDesks:LayoutSymbol
 	# 0:00000000:00000000:[]= -> 00000000:00000000:[]=
-	MONLINE="$(cut -d':' -f2-4 <<<"$MONLINE")"
-	ISDESKOCC="$(cut -d':' -f1 <<<"$MONLINE")"
-	ISDESKSEL="$(cut -d':' -f2 <<<"$MONLINE")"
-	LAYOUTSYM="$(cut -d':' -f3 <<<"$MONLINE")"
+	MONLINE="$(echo $MONLINE | cut -d':' -f2-4)"
+	ISDESKOCC="$(echo $MONLINE | cut -d':' -f1)"
+	ISDESKSEL="$(echo $MONLINE | cut -d':' -f2)"
+	LAYOUTSYM="$(echo $MONLINE | cut -d':' -f3)"
 
-	# TODO: less messy
+	# TODO: is ${#STRING} portable?
 	# TODO: options for all tags or just occupied
 	for (( i=0; i<${#ISDESKOCC}; i++ )); do
 		TAGBUTTONSTART="%{A:sarasock 'view $i':}%{A3:sarasock 'toggleview $i':}"
 		TAGBUTTONEND="%{A}%{A}"
 
-		if [ ${ISDESKSEL:$i:1} -eq 1 ]; then
+		if test "$(echo $ISDESKSEL | cut -c$i)" -eq 1; then
 			TMPBG=$SELCOLBG
-		elif [ ${ISDESKOCC:$i:1} -eq 1 ]; then
+		elif test "$(echo $ISDESKOCC | cut -c$i)" -eq 1; then
 			TMPBG=$OCCCOLBG
 		else
 			TMPBG=$BARBG
 		fi
 
-		TAGSTR="${TAGSTR}%{B$TMPBG}${TAGBUTTONSTART}   ${TAGS:$i:1}   ${TAGBUTTONEND}%{B-}"
+		TAGSTR="${TAGSTR}%{B$TMPBG}${TAGBUTTONSTART}   $(echo $TAGS | cut -d':' -f$i)   ${TAGBUTTONEND}%{B$INFOBG}"
 	done
-	TAGSTR="${TAGSTR}${LTBUTTONSTART}  $LAYOUTSYM  ${LTBUTTONEND}"
+	TAGSTR="${TAGSTR}${LTBUTTONSTART}  $LAYOUTSYM  ${LTBUTTONEND}%{B-}"
 
 	echo "${TAGSTR}"
 }
@@ -81,7 +89,8 @@ INFF="/tmp/peachbar.fifo"
 test -e "$INFF" && ! test -p "$INFF" && sudo rm "$INFF"
 test -p "$INFF" || sudo mkfifo -m 777 "$INFF"
 
-peachbar.sh "$INFF" &
+# TODO: peachbar-start.sh necessary?
+peachbar-start.sh "$INFF" &
 
 
 # ------------------------------------------
@@ -90,7 +99,7 @@ peachbar.sh "$INFF" &
 while read line; do
 	MULTI=$(xrandr -q | grep "$EXTDIS" | awk -F" " '{ print $2 }')
 
-	# TODO: INFF should only be for sara!
+	# TODO: jank. denote the start of sara info somehow.
 	# if line is sara info
 	if [[ "${line:0:1}" =~ ^[0-4].* ]]; then
 		# monitor 0 (lemonbar says it's 1)

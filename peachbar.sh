@@ -9,18 +9,16 @@ test -z $INFF && echo "Please provide FIFO as argument" && exit -1
 # ------------------------------------------
 BARFG="#ffffff"
 # From 00 to 99
-BARALPHA=85
-BARBG="#$BARALPHA""000000"
+MODULESALPHA=85
+MODULESBG="#$MODULESALPHA""000000"
 
 # Audio
 MUTEBG="#F70D1A"
 
 # Battery
 CHRBG="#348017"
+LOWBG="#FFA62F"
 PANICBG="#F70D1A"
-
-# Brightness
-BRIGHTBG="#FFA62F"
 
 # Network
 DOWNBG="#F70D1A"
@@ -45,7 +43,7 @@ Audio() {
 			sed 's/\[//' | \
 			sed 's/\]//')"
 
-	test $STATE = "off" && echo "%{B$MUTEBG}  VOL: $VOL  %{B-}" || \
+	test $STATE = "off" && echo "%{B$MUTEBG}  VOL: $VOL  %{B$MODULESBG}" || \
 		echo "  VOL: $VOL  "
 }
 
@@ -56,21 +54,26 @@ Battery() {
 	test $BAT -gt 100 && BAT=100
 
 	BATSYM="BAT:"
-	test "$BATSTAT" = "Charging" || test "$BATSTAT" = "Unknown" && BATSYM="CHR:"
-	test "$BATSTAT" = "Full" && BATSYM="CHR:"
+	(test "$BATSTAT" = "Charging" || test "$BATSTAT" = "Unknown") || \
+		test "$BATSTAT" = "Full" && BATSYM="CHR:"
 
-	if test $BAT -le 10 && test "$BATSYM" = "BAT:"; then
-		echo "%{B$PANICBG}  $BATSYM $BAT%  %{B-}"
+	if test "$BATSYM" = "BAT:"; then
+		if test $BAT -le 10; then
+			echo "%{B$PANICBG}  $BATSYM $BAT%  %{B$MODULESBG}"
+		elif test $BAT -le 20; then
+			echo "%{B$LOWBG}  $BATSYM $BAT%  %{B$MODULESBG}"
+		else
+			echo "  $BATSYM $BAT%  "
+		fi
 	else
-		test "$BATSYM" = "BAT:" && echo "  $BATSYM $BAT%  " || \
-			echo "%{B$CHRBG}  $BATSYM $BAT%  %{B-}%"
+		echo "%{B$CHRBG}  $BATSYM $BAT%  %{B$MODULESBG}"
 	fi
 }
 
 Brightness() {
 	BRIGHT="$(light -G | sed 's/\..*//g')"
 
-	echo "%{F$BARFG}%{B$BRIGHTBG}  o $BRIGHT%  %{B-}%{F-}"
+	echo "  o $BRIGHT%  "
 }
 
 Network() {
@@ -83,7 +86,7 @@ Network() {
 		NETNAME="  $NETNAME  "
 
 	else
-		NETNAME="%{B$DOWNBG}  down  %{B-}"
+		NETNAME="%{B$DOWNBG}  down  %{B$MODULESBG}"
 	fi
 
 	echo "$NETNAME"
@@ -112,14 +115,17 @@ done
 # ------------------------------------------
 # Sleep until 10s up or signal received
 # Useful for updating audio/brightness immediately
+# TODO: faster way?
 trap 'FLAG=false' SIGUSR1
 FLAG=true
 while true; do
-	STATUSLINE=""
+	STATUSLINE="%{B$MODULESBG}"
 
 	for MODULE in $MODULES; do
 		STATUSLINE="$STATUSLINE$($MODULE)"
 	done
+
+	STATUSLINE="$STATUSLINE%{B-}"
 
 	# Write STATUSLINE to FIFO
 	echo "$STATUSLINE" > "$INFF"
