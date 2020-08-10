@@ -1,47 +1,26 @@
 #!/bin/bash
 
-EXTDIS="HDMI-0"
+if test -f "$HOME/.config/peachbar/peachbar.conf"; then
+	. "$HOME/.config/peachbar/peachbar.conf"
+else
+	echo "Missing config file at $HOME/.config/peachbar/peachbar.conf"
+	exit -1
+fi
 
 # TODO:
-#	1. Config file in .config/peachbar/peachbarrc
-#		a. Backup scheme in case no config
-#	2. Signal with SIGUSR2 to reload config?
-#	3. Be able to restart peachbar without killing sara
-
-
-# ------------------------------------------
-# Graphical options
-# ------------------------------------------
-
-# TODO: will the spacing look okay?
-TAGS="I:II:III:IV:V:VI:VII:VIII:IX"
-
-BARFG="#ffffff"
-# From 00 to 99
-INFOALPHA=85
-BARALPHA=00
-INFOBG="#$INFOALPHA""000000"
-BARBG="#$BARALPHA""000000"
-
-BARFONT="Noto Sans:size=10"
-
-# Dimensions
-# Make sure to adjust for BARH if you put the bar on the bottom!
-#	(i.e. y_orig = 1080-18)
-BARH=18
-BARX=0
-BARY=0
+#	1. Signal with SIGUSR2 to reload config?
+#	2. Be able to restart peachbar without killing sara?
 
 
 # ------------------------------------------
 # Parse sara output
 # ------------------------------------------
+# TODO: TAGS spacing does not look okay with arbitrary tags! Need to standardize.
+#	1. Determine which tag has the most characters
+#	2. Give that one 2 spaces of padding
+#	3. Add the difference to everyone else
+#		a. What about odd numbers?
 ParseSara() {
-	#OCCCOLBG="#4E387E"
-	#SELCOLBG="#F87217"
-	OCCCOLBG="#FBF6D9"
-	SELCOLBG="#2B65EC"
-
 	LTBUTTONSTART="%{A:sarasock 'setlayout tile':}%{A3:sarasock 'setlayout monocle':}"
 	LTBUTTONEND="%{A}%{A}"
 
@@ -52,7 +31,7 @@ ParseSara() {
 	TAGSTR="%{B$INFOBG}"
 
 	# MonNum:OccupiedDesks:SelectedDesks:LayoutSymbol
-	# 0:00000000:00000000:[]= -> 00000000:00000000:[]=
+	# 0:000000000:000000000:[]= -> 000000000:000000000:[]=
 	MONLINE="$(echo $MONLINE | cut -d':' -f2-4)"
 	ISDESKOCC="$(echo $MONLINE | cut -d':' -f1)"
 	ISDESKSEL="$(echo $MONLINE | cut -d':' -f2)"
@@ -64,15 +43,18 @@ ParseSara() {
 		TAGBUTTONSTART="%{A:sarasock 'view $i':}%{A3:sarasock 'toggleview $i':}"
 		TAGBUTTONEND="%{A}%{A}"
 
-		if test "$(echo $ISDESKSEL | cut -c$i)" -eq 1; then
+		if test "$(echo $ISDESKSEL | cut -c$((i + 1)))" -eq 1; then
+			TMPFG=$SELCOLFG
 			TMPBG=$SELCOLBG
-		elif test "$(echo $ISDESKOCC | cut -c$i)" -eq 1; then
+		elif test "$(echo $ISDESKOCC | cut -c$((i + 1)))" -eq 1; then
+			TMPFG=$OCCCOLFG
 			TMPBG=$OCCCOLBG
 		else
-			TMPBG=$BARBG
+			TMPFG=$INFOFG
+			TMPBG=$INFOBG
 		fi
 
-		TAGSTR="${TAGSTR}%{B$TMPBG}${TAGBUTTONSTART}   $(echo $TAGS | cut -d':' -f$i)   ${TAGBUTTONEND}%{B$INFOBG}"
+		TAGSTR="${TAGSTR}%{F$TMPFG}%{B$TMPBG}${TAGBUTTONSTART}   $(echo $TAGS | cut -d':' -f$((i + 1)) )   ${TAGBUTTONEND}%{B$INFOBG}%{F$INFOFG}"
 	done
 	TAGSTR="${TAGSTR}${LTBUTTONSTART}  $LAYOUTSYM  ${LTBUTTONEND}%{B-}"
 
@@ -84,13 +66,11 @@ ParseSara() {
 # Initialization
 # ------------------------------------------
 
-INFF="/tmp/peachbar.fifo"
 # Clear out any stale fifos
 test -e "$INFF" && ! test -p "$INFF" && sudo rm "$INFF"
 test -p "$INFF" || sudo mkfifo -m 777 "$INFF"
 
-# TODO: peachbar-start.sh necessary?
-peachbar-start.sh "$INFF" &
+peachbar.sh &
 
 
 # ------------------------------------------

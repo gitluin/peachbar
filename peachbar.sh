@@ -1,17 +1,16 @@
 #!/bin/bash
 
-INFF="$1"
-test -z $INFF && echo "Please provide FIFO as argument" && exit -1
+if test -f "$HOME/.config/peachbar/peachbar.conf"; then
+	. "$HOME/.config/peachbar/peachbar.conf"
+else
+	echo "Missing config file at $HOME/.config/peachbar/peachbar.conf"
+	exit -1
+fi
 
 
 # ------------------------------------------
 # Graphical options
 # ------------------------------------------
-BARFG="#ffffff"
-# From 00 to 99
-MODULESALPHA=85
-MODULESBG="#$MODULESALPHA""000000"
-
 # Audio
 MUTEBG="#F70D1A"
 
@@ -27,6 +26,7 @@ DOWNBG="#F70D1A"
 # ------------------------------------------
 # Modules
 # ------------------------------------------
+# TODO: Modules in peachbar.conf?
 
 # Define necessary files for your modules
 BATSTATFILE="/sys/class/power_supply/BAT0/status"
