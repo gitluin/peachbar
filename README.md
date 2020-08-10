@@ -4,18 +4,17 @@ This is a collection of shell scripts that were written for use with [sara v3.0+
 
 ## Installation
 ### Prerequisites
-* `lemonbar` or some other bar software that you can pipe the output to.
+* [lemonbar-xft](https://github.com/krypt-n/bar) or some other bar software that you can pipe the output to.
 * `sxhkd` and `sara` if you want sara integration.
 
 ### Setting up peachbar
 You should use an `sxhkdrc` like the example in the sara repository for amixer controls, etc. to properly signal peachbar to update.
-* Running `sudo install.sh` from the repo directory should put all the files, save the `udev` rules, where they belong.
-* To use the peachbar information modules with other window managers, add `peachbar.sh &` to `~/.xinitrc`.
-* To use peachbar with sara, end `~/.xinitrc` with `exec peachbar-startsara.sh`, which will start sara and an instance of [lemonbar with Xft support](https://github.com/krypt-n/bar).
+* `sudo ./install.sh "$HOME"` installs the scripts to `/usr/local/bin` and config files to `$HOME/.config/peachbar/`.
+* To use the peachbar information modules with other window managers, add `peachbar.sh &` to `~/.xinitrc`. This will require removing the lemonbar syntax in the modules.
+* To use peachbar with sara, end `~/.xinitrc` with `exec peachbar-startsara.sh`, which will start sara and an instance of `lemonbar` (by default expecting the xft fork).
 * `sudo cp peachbar-battery.rules /etc/udev/rules.d/` *after* changing all `/home/ishmael/` references to `/home/your-name/`.
-* Run `sudo udevadm control --reload` (or reboot) to ensure the battery rules take effect. 
+* Run `sudo udevadm control --reload` or `sudo reboot` to ensure the battery rules take effect. 
 * To properly integrate with sara and lemonbar, adjust the `barpx` variable in `sara/config.h` as desired and match this with `BARH`.
-	* You will have to install `lemonbar-xft` separately for this to work.
 * Make sure you go over the shell scripts to verify that everything matches your system (particularly the module functions in `peachbar.sh` in case, for example, you use something other than amixer or light for audio or brightness).
 
 ## Personalization
@@ -23,6 +22,11 @@ lemonbar has a **lot** of customization options, so go hog-wild here. `peachbar-
 
 ## Why It's Cool
 Everything is updated every 10 seconds, unless `peachbar.sh` receives `SIGUSR1`, in which case it updates the status text immediately. This means that audio status, brightness, and battery status are always up-to-date, but without excessive polling.
+
+## Uninstallation
+* `sudo ./uninstall.sh "$HOME"` removes the scripts and config files.
+* `sudo rm /etc/udev/rules.d/peachbar-battery.rules`
+* `sudo udevadm control --reload` or `sudo reboot`.
 
 ## To-Do:
 * Command line options like reloading config?

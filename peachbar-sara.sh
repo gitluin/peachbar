@@ -3,13 +3,9 @@
 if test -f "$HOME/.config/peachbar/peachbar.conf"; then
 	. "$HOME/.config/peachbar/peachbar.conf"
 else
-	echo "Missing config file at $HOME/.config/peachbar/peachbar.conf"
+	echo "Missing config file: $HOME/.config/peachbar/peachbar.conf"
 	exit -1
 fi
-
-# TODO:
-#	1. Signal with SIGUSR2 to reload config?
-#	2. Be able to restart peachbar without killing sara?
 
 
 # ------------------------------------------
@@ -63,20 +59,9 @@ ParseSara() {
 
 
 # ------------------------------------------
-# Initialization
+# Grab information and print it out
 # ------------------------------------------
-
-# Clear out any stale fifos
-test -e "$INFF" && ! test -p "$INFF" && sudo rm "$INFF"
-test -p "$INFF" || sudo mkfifo -m 777 "$INFF"
-
-peachbar.sh &
-
-
-# ------------------------------------------
-# Main loop
-# ------------------------------------------
-while read line; do
+GrabNPrint() {
 	MULTI=$(xrandr -q | grep "$EXTDIS" | awk -F" " '{ print $2 }')
 
 	# TODO: jank. denote the start of sara info somehow.
@@ -101,7 +86,27 @@ while read line; do
 	else
 		printf "%s\n" "%{l}${TAGSTR0}%{r}$BARSTATS"
 	fi
-done < "$INFF" | lemonbar -a 32 -g x"$BARH"+"$BARX"+"$BARY" -d -f "$BARFONT" -B "$BARBG" -F "$BARFG" | sh &
+}
 
-# Pull information from sara
-exec sara > "$INFF"
+# ------------------------------------------
+# Initialization
+# ------------------------------------------
+# Kill other peachbar-sara.sh instances
+# For some reason, pgrep and 'peachbar-*.sh'
+#	don't play nice - something about the
+#	[.].
+PEACHPIDS="$(pgrep "peachbar-sara")"
+for PEACHPID in $PEACHPIDS; do
+	! test $PEACHPID = $$ && kill -9 $PEACHPID
+done
+
+
+# ------------------------------------------
+# Main loop
+# ------------------------------------------
+# Reload config file on signal
+# TODO: doesn't quite work
+trap ". $HOME/.config/peachbar/peachbar.conf; GrabNPrint" SIGUSR2
+while read line; do
+	GrabNPrint
+done
