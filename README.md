@@ -30,4 +30,6 @@ Everything is updated every 10 seconds, unless `peachbar-sys.sh` receives `SIGUS
 
 ## To-Do:
 * Command line options like reloading config?
-* Status text lags behind if you hold down keys like brightness, etc. (changes too fast).
+* Alternative approach to coloring battery: acpi event sets a bash variable.
+* Better coloring in general: Xresources, etc.?
+* Separate square for icons, followed by status ([see here](https://i.redd.it/wzba8omwrdi51.png)).

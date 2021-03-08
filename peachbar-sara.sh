@@ -36,8 +36,12 @@ ParseSara() {
 	# TODO: is ${#STRING} portable?
 	# TODO: options for all tags or just occupied
 	for (( i=0; i<${#ISDESKOCC}; i++ )); do
-		TAGBUTTONSTART="%{A:sarasock 'view $i':}%{A3:sarasock 'toggleview $i':}"
-		TAGBUTTONEND="%{A}%{A}"
+		# TODO: does not play nice with nested clickables. Causes tags to disappear on extra monitor.
+		#TAGBUTTONSTART="%{A:sarasock 'view $i':}%{A3:sarasock 'toggleview $i':}"
+		#TAGBUTTONEND="%{A}%{A}"
+
+		TAGBUTTONSTART="%{A:sarasock 'view $i':}"
+		TAGBUTTONEND="%{A}"
 
 		if test "$(echo $ISDESKSEL | cut -c$((i + 1)))" -eq 1; then
 			TMPFG=$SELCOLFG
@@ -50,7 +54,7 @@ ParseSara() {
 			TMPBG=$INFOBG
 		fi
 
-		TAGSTR="${TAGSTR}%{F$TMPFG}%{B$TMPBG}${TAGBUTTONSTART}   $(echo $TAGS | cut -d':' -f$((i + 1)) )   ${TAGBUTTONEND}%{B$INFOBG}%{F$INFOFG}"
+		TAGSTR="${TAGSTR}%{F$TMPFG}%{B$TMPBG}${TAGBUTTONSTART}   $(echo $TAGS | cut -d':' -f$((i + 1)) )   ${TAGBUTTONEND}%{B-}%{F-}"
 	done
 	TAGSTR="${TAGSTR}${LTBUTTONSTART}  $LAYOUTSYM  ${LTBUTTONEND}%{B-}"
 
@@ -62,29 +66,35 @@ ParseSara() {
 # Grab information and print it out
 # ------------------------------------------
 GrabNPrint() {
-	MULTI=$(xrandr -q | grep "$EXTDIS" | awk -F" " '{ print $2 }')
+	MONLINE=$1
+	MULTI=$(xrandr -q | grep "$EXTDIS" | cut -d' ' -f2)
 
-	# TODO: jank. denote the start of sara info somehow.
-	# if line is sara info
-	if [[ "${line:0:1}" =~ ^[0-4].* ]]; then
+	if [[ "${MONLINE:0:1}" =~ ^[0-4].* ]]; then
+	#if test "${MONLINE:0:4}" = "SARA"; then
+		# Take only the part inside the {SARA}___{SARA-} delims
+		#MONLINE="$(echo $MONLINE | sed 's/.*{SARA}//' | sed 's/{SARA-}.*//')"
+		#MONLINE0="$(cut -d'|' -f1 <<<"$MONLINE")"
+
 		# monitor 0 (lemonbar says it's 1)
-		MONLINE0="$(cut -d' ' -f1 <<<"$line")"
+		MONLINE0="$(cut -d' ' -f1 <<<"$MONLINE")"
 		TAGSTR0="$(ParseSara $MONLINE0 $TAGS)"
 
-		if [ "$MULTI" = "connected" ]; then
+		if test "$MULTI" = "connected"; then
+			#MONLINE1="$(cut -d'|' -f2 <<<"$MONLINE")"
+
 			# monitor 1 (lemonbar says it's 0)
-			MONLINE1="$(cut -d' ' -f2 <<<"$line")"
+			MONLINE1="$(cut -d' ' -f2 <<<"$MONLINE")"
 			TAGSTR1="$(ParseSara $MONLINE1 $TAGS)"
 		fi
-	# else, line is peachbar info
+
 	else
-		BARSTATS="$line"
+		BARSTATS="$MONLINE"
 	fi
 
-	if [ "$MULTI" = "connected" ]; then
-		printf "%s\n" "%{S0}%{l}${TAGSTR1}%{r}$BARSTATS%{S1}%{l}${TAGSTR0}%{r}$BARSTATS"
+	if test "$MULTI" = "connected"; then
+		printf "%s\n" "%{B$BARBG}%{S0}%{l}${TAGSTR1}%{r}$BARSTATS%{S1}%{l}${TAGSTR0}%{r}$BARSTATS%{B-}"
 	else
-		printf "%s\n" "%{l}${TAGSTR0}%{r}$BARSTATS"
+		printf "%s\n" "%{B$BARBG}%{l}${TAGSTR0}%{r}$BARSTATS%{B-}"
 	fi
 }
 
@@ -106,7 +116,9 @@ done
 # ------------------------------------------
 # Reload config file on signal
 # TODO: doesn't quite work
+#	Because I'm not piping anything into GrabNPrint - it needs $line
 trap ". $HOME/.config/peachbar/peachbar.conf; GrabNPrint" SIGUSR2
+trap 'exit 1' SIGTERM
 while read line; do
-	GrabNPrint
+	GrabNPrint "$line"
 done

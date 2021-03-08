@@ -36,6 +36,7 @@ trap ". $HOME/.config/peachbar/peachbar.conf && . $HOME/.config/peachbar/peachba
 # Sleep until 10s up or signal received
 # Useful for updating audio/brightness immediately
 trap 'DUMMY=false' SIGUSR1
+trap 'exit 1' SIGTERM
 while true; do
 	STATUSLINE="%{B$MODULESBG}"
 
@@ -46,6 +47,7 @@ while true; do
 	STATUSLINE="$STATUSLINE%{B-}"
 
 	# Write STATUSLINE to FIFO
+	#echo "PEACH{$STATUSLINE}" > "$INFF"
 	echo "$STATUSLINE" > "$INFF"
 
 	sleep 10 &

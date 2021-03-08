@@ -26,6 +26,8 @@ done
 # Install .conf files
 # ------------------------------------------
 
+# TODO: prompt user to overwrite existing files
+
 CONFFILES="$(ls | grep '.conf')"
 
 echo "Creating $CONFDIR..."

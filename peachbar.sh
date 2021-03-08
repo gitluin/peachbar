@@ -13,7 +13,7 @@ test -p "$INFF" || sudo mkfifo -m 777 "$INFF"
 
 peachbar-sys.sh &
 
-peachbar-sara.sh < "$INFF" | lemonbar -a 32 -g x"$BARH"+"$BARX"+"$BARY" -d -f "$BARFONT" -B "$BARBG" -F "$BARFG" | sh &
+peachbar-sara.sh < "$INFF" | lemonbar -a 32 -g x"$BARH"+"$BARX"+"$BARY" -d -f "$BARFONT" -f "$ICONFONT" -B "$BARBG" -F "$BARFG" | sh &
 
 # Pull information from sara
 exec sara > "$INFF"
