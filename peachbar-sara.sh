@@ -20,9 +20,15 @@ ParseSara() {
 	LTBUTTONSTART="%{A:sarasock 'setlayout tile':}%{A3:sarasock 'setlayout monocle':}"
 	LTBUTTONEND="%{A}%{A}"
 
-	# Pass MONLINE, TAGS
+	# Pass MONLINE, TAGS, SELTAGS, OCCTAGS
 	MONLINE="$1"
 	TAGS="$2"
+	SELTAGS="$3"
+	OCCTAGS="$4"
+
+	# In case user wants to be less specific with symbols
+	test -z "$SELTAGS" && SELTAGS="$TAGS"
+	test -z "$OCCTAGS" && OCCTAGS="$TAGS"
 
 	TAGSTR="%{B$INFOBG}"
 
@@ -46,19 +52,22 @@ ParseSara() {
 		if test "$(echo $ISDESKSEL | cut -c$((i + 1)))" -eq 1; then
 			TMPFG=$SELCOLFG
 			TMPBG=$SELCOLBG
+			TMPTAGS=$SELTAGS
 		elif test "$(echo $ISDESKOCC | cut -c$((i + 1)))" -eq 1; then
 			TMPFG=$OCCCOLFG
 			TMPBG=$OCCCOLBG
+			TMPTAGS=$OCCTAGS
 		else
 			TMPFG=$INFOFG
 			TMPBG=$INFOBG
+			TMPTAGS=$TAGS
 		fi
 
-		TAGSTR="${TAGSTR}%{F$TMPFG}%{B$TMPBG}${TAGBUTTONSTART}   $(echo $TAGS | cut -d':' -f$((i + 1)) )   ${TAGBUTTONEND}%{B-}%{F-}"
+		TAGSTR="${TAGSTR}%{F$TMPFG}%{B$TMPBG}${TAGBUTTONSTART}   $(echo -e $TMPTAGS | cut -d':' -f$((i + 1)) )   ${TAGBUTTONEND}%{B-}%{F-}"
 	done
 	TAGSTR="${TAGSTR}${LTBUTTONSTART}  $LAYOUTSYM  ${LTBUTTONEND}%{B-}"
 
-	echo "${TAGSTR}"
+	echo -e "${TAGSTR}"
 }
 
 
@@ -77,14 +86,14 @@ GrabNPrint() {
 
 		# monitor 0 (lemonbar says it's 1)
 		MONLINE0="$(cut -d' ' -f1 <<<"$MONLINE")"
-		TAGSTR0="$(ParseSara $MONLINE0 $TAGS)"
+		TAGSTR0="$(ParseSara $MONLINE0 $TAGS $SELTAGS $OCCTAGS)"
 
 		if test "$MULTI" = "connected"; then
 			#MONLINE1="$(cut -d'|' -f2 <<<"$MONLINE")"
 
 			# monitor 1 (lemonbar says it's 0)
 			MONLINE1="$(cut -d' ' -f2 <<<"$MONLINE")"
-			TAGSTR1="$(ParseSara $MONLINE1 $TAGS)"
+			TAGSTR1="$(ParseSara $MONLINE1 $TAGS $SELTAGS $OCCTAGS)"
 		fi
 
 	else
@@ -95,6 +104,7 @@ GrabNPrint() {
 		printf "%s\n" "%{B$BARBG}%{S0}%{l}${TAGSTR1}%{r}$BARSTATS%{S1}%{l}${TAGSTR0}%{r}$BARSTATS%{B-}"
 	else
 		printf "%s\n" "%{B$BARBG}%{l}${TAGSTR0}%{r}$BARSTATS%{B-}"
+		#echo -e "%{B$BARBG}%{l}${TAGSTR0}%{r}$BARSTATS%{B-}\n"
 	fi
 }
 
