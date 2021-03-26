@@ -13,7 +13,9 @@ test -p "$INFF" || sudo mkfifo -m 777 "$INFF"
 
 peachbar-sys.sh &
 
-peachbar-sara.sh < "$INFF" | lemonbar -a 32 -g x"$BARH"+"$BARX"+"$BARY" -d -f "$BARFONT" -f "$ICONFONT" -B "$BARBG" -F "$BARFG" | sh &
+# TODO: set -a based on (number of tags + 1 for layout sym) * number of monitors
+
+peachbar-sara.sh < "$INFF" | lemonbar -a 40 -g x"$BARH"+"$BARX"+"$BARY" -d -f "$BARFONT" -f "$ICONFONT" -B "$BARBG" -F "$BARFG" | sh &
 
 # Pull information from sara
 exec sara > "$INFF"

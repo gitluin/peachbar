@@ -29,6 +29,10 @@ ParseSara() {
 	# In case user wants to be less specific with symbols
 	test -z "$SELTAGS" && SELTAGS="$TAGS"
 	test -z "$OCCTAGS" && OCCTAGS="$TAGS"
+	test -z "$TAGDELIMF" && TAGDELIMF="   "
+	test -z "$TAGDELIMB" && TAGDELIMB="$TAGDELIMF"
+	test -z "$LTDELIMF" && LTDELIMF="  "
+	test -z "$LTDELIMB" && LTDELIMB="$LTDELIMF"
 
 	TAGSTR="%{B$INFOBG}"
 
@@ -63,9 +67,10 @@ ParseSara() {
 			TMPTAGS=$TAGS
 		fi
 
-		TAGSTR="${TAGSTR}%{F$TMPFG}%{B$TMPBG}${TAGBUTTONSTART}   $(echo -e $TMPTAGS | cut -d':' -f$((i + 1)) )   ${TAGBUTTONEND}%{B-}%{F-}"
+		#TAGSTR="${TAGSTR}%{F$TMPFG}%{B$TMPBG}${TAGBUTTONSTART}   $(echo -e $TMPTAGS | cut -d':' -f$((i + 1)) )   ${TAGBUTTONEND}%{B$INFOBG}%{F$INFOFG}"
+		TAGSTR="${TAGSTR}%{F$TMPFG}%{B$TMPBG}${TAGBUTTONSTART}${TAGDELIMF}$(echo -e $TMPTAGS | cut -d':' -f$((i + 1)) )${TAGDELIMB}${TAGBUTTONEND}%{B$INFOBG}%{F$INFOFG}"
 	done
-	TAGSTR="${TAGSTR}${LTBUTTONSTART}  $LAYOUTSYM  ${LTBUTTONEND}%{B-}"
+	TAGSTR="${TAGSTR}${LTBUTTONSTART}${LTDELIMF}$LAYOUTSYM${LTDELIMB}${LTBUTTONEND}%{B-}%{F-}"
 
 	echo -e "${TAGSTR}"
 }
@@ -79,11 +84,6 @@ GrabNPrint() {
 	MULTI=$(xrandr -q | grep "$EXTDIS" | cut -d' ' -f2)
 
 	if [[ "${MONLINE:0:1}" =~ ^[0-4].* ]]; then
-	#if test "${MONLINE:0:4}" = "SARA"; then
-		# Take only the part inside the {SARA}___{SARA-} delims
-		#MONLINE="$(echo $MONLINE | sed 's/.*{SARA}//' | sed 's/{SARA-}.*//')"
-		#MONLINE0="$(cut -d'|' -f1 <<<"$MONLINE")"
-
 		# monitor 0 (lemonbar says it's 1)
 		MONLINE0="$(cut -d' ' -f1 <<<"$MONLINE")"
 		TAGSTR0="$(ParseSara $MONLINE0 $TAGS $SELTAGS $OCCTAGS)"
@@ -104,7 +104,6 @@ GrabNPrint() {
 		printf "%s\n" "%{B$BARBG}%{S0}%{l}${TAGSTR1}%{r}$BARSTATS%{S1}%{l}${TAGSTR0}%{r}$BARSTATS%{B-}"
 	else
 		printf "%s\n" "%{B$BARBG}%{l}${TAGSTR0}%{r}$BARSTATS%{B-}"
-		#echo -e "%{B$BARBG}%{l}${TAGSTR0}%{r}$BARSTATS%{B-}\n"
 	fi
 }
 

@@ -22,5 +22,7 @@ done
 # Delete .config folder
 # ------------------------------------------
 
+# TODO: ask before removing CONFDIR
+
 echo "Removing $CONFDIR..."
 rm -r "$CONFDIR"

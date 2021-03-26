@@ -7,6 +7,11 @@ test -z "$(pwd | grep peachbar)" && echo "Please run this script from the repo d
 SCRIPTDIR="/usr/local/bin"
 CONFDIR="$1/.config/peachbar/"
 
+# TODO:
+# Trim any trailing / from $1
+# Install battery.rules
+#	Prompt user for username under which to do this
+
 
 # ------------------------------------------
 # Install .sh files

@@ -28,10 +28,16 @@ Everything is updated every 10 seconds, unless `peachbar-sys.sh` receives `SIGUS
 * `sudo rm /etc/udev/rules.d/peachbar-battery.rules`
 * `sudo udevadm control --reload` or `sudo reboot`.
 
+## Bugs
+* When a module fails to return, the entire `sys` area fails.
+* When sending SIGUSR2 to `peachbar-sara`, changes are not redrawn until a GrabNPrint (i.e. `sara` outputs information) is executed. Modules also disappear.
+
 ## To-Do:
 * Command line options like reloading config?
 * Alternative approach to coloring battery: acpi event sets a bash variable.
 * Better coloring in general: Xresources, etc.?
 * Separate square for icons, followed by status ([see here](https://i.redd.it/wzba8omwrdi51.png)).
-* Option for ParseSara delimeters.
 * Standardize module printing/spacing.
+* Theming guide.
+* Separate `sara` and `sys` parts - `peachbar-sara.sh` currently handles printing of the entire bar string.
+* Custom layout symbols
