@@ -3,7 +3,12 @@
 test -z "$1" && echo "Please provide your HOME directory as an argument" && exit -1
 
 SCRIPTDIR="/usr/local/bin"
-CONFDIR="$1/.config/peachbar/"
+
+# Trim any trailing / from $1
+FINCHAR="$(echo $1 | sed 's/.*\(.\)$/\1/')"
+test "$FINCHAR" = "/" && HDIR="$(echo $1 | sed 's/\(.*\).$/\1/')" || \
+	HDIR="$1"
+CONFDIR="$HDIR/.config/peachbar/"
 
 
 # ------------------------------------------
@@ -26,3 +31,8 @@ done
 
 echo "Removing $CONFDIR..."
 rm -r "$CONFDIR"
+
+
+# ------------------------------------------
+# TODO: remove battery.rules if desired
+# ------------------------------------------

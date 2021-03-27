@@ -7,6 +7,8 @@ else
 	exit -1
 fi
 
+TO_OUT=""
+
 
 # ------------------------------------------
 # Parse sara output
@@ -70,7 +72,7 @@ ParseSara() {
 		#TAGSTR="${TAGSTR}%{F$TMPFG}%{B$TMPBG}${TAGBUTTONSTART}   $(echo -e $TMPTAGS | cut -d':' -f$((i + 1)) )   ${TAGBUTTONEND}%{B$INFOBG}%{F$INFOFG}"
 		TAGSTR="${TAGSTR}%{F$TMPFG}%{B$TMPBG}${TAGBUTTONSTART}${TAGDELIMF}$(echo -e $TMPTAGS | cut -d':' -f$((i + 1)) )${TAGDELIMB}${TAGBUTTONEND}%{B$INFOBG}%{F$INFOFG}"
 	done
-	TAGSTR="${TAGSTR}${LTBUTTONSTART}${LTDELIMF}$LAYOUTSYM${LTDELIMB}${LTBUTTONEND}%{B-}%{F-}"
+	TAGSTR="${TAGSTR}${LTBUTTONSTART}${LTDELIMF}$LAYOUTSYM${LTDELIMB}${LTBUTTONEND}%{B$BARBG}%{F$BARFG}"
 
 	echo -e "${TAGSTR}"
 }
@@ -101,10 +103,12 @@ GrabNPrint() {
 	fi
 
 	if test "$MULTI" = "connected"; then
-		printf "%s\n" "%{B$BARBG}%{S0}%{l}${TAGSTR1}%{r}$BARSTATS%{S1}%{l}${TAGSTR0}%{r}$BARSTATS%{B-}"
+		TO_OUT="%{B$BARBG}%{S0}%{l}${TAGSTR1}%{r}$BARSTATS%{S1}%{l}${TAGSTR0}%{r}$BARSTATS%{B-}"
 	else
-		printf "%s\n" "%{B$BARBG}%{l}${TAGSTR0}%{r}$BARSTATS%{B-}"
+		TO_OUT="%{B$BARBG}%{l}${TAGSTR0}%{r}$BARSTATS%{B-}"
 	fi
+
+	printf "%s\n" "$TO_OUT"
 }
 
 # ------------------------------------------
@@ -126,7 +130,9 @@ done
 # Reload config file on signal
 # TODO: doesn't quite work
 #	Because I'm not piping anything into GrabNPrint - it needs $line
-trap ". $HOME/.config/peachbar/peachbar.conf; GrabNPrint" SIGUSR2
+#	Should I store the string and then reprint to lemonbar upon SIGUSR2?
+#		This would require re-evaling all the variables after change
+trap ". $HOME/.config/peachbar/peachbar.conf; printf '%s\n' \"$TO_OUT\"" SIGUSR2
 trap 'exit 1' SIGTERM
 while read line; do
 	GrabNPrint "$line"

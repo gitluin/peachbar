@@ -30,6 +30,7 @@ Everything is updated every 10 seconds, unless `peachbar-sys.sh` receives `SIGUS
 ## Bugs
 * When a module fails to return, the entire `sys` area fails.
 * When sending SIGUSR2 to `peachbar-sara`, changes are not redrawn until a GrabNPrint (i.e. `sara` outputs information) is executed. Modules also disappear.
+* BARBG only changes in the middle part of the bar when relaunching lemonbar. Maybe replace with a "middle" section instead of setting -B?
 
 ## To-Do:
 * Command line options like reloading config?

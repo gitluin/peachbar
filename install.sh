@@ -66,3 +66,5 @@ if (test "$ANSWER" = "y" || test "$ANSWER" = "Y"); then
 else
 	echo "Skipping battery.rules installation..."
 fi
+
+echo "Done!"
