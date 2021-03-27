@@ -41,3 +41,4 @@ Everything is updated every 10 seconds, unless `peachbar-sys.sh` receives `SIGUS
 * Theming guide.
 * Separate `sara` and `sys` parts - `peachbar-sara.sh` currently handles printing of the entire bar string.
 * Custom layout symbols
+* Explain examples.
