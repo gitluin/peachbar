@@ -49,6 +49,7 @@ ParseSara() {
 	# TODO: options for all tags or just occupied
 	for (( i=0; i<${#ISDESKOCC}; i++ )); do
 		# TODO: does not play nice with nested clickables. Causes tags to disappear on extra monitor.
+		#	Possibly because the limit for clickables was previously reached?
 		#TAGBUTTONSTART="%{A:sarasock 'view $i':}%{A3:sarasock 'toggleview $i':}"
 		#TAGBUTTONEND="%{A}%{A}"
 
@@ -133,7 +134,8 @@ done
 #	Should I store the string and then reprint to lemonbar upon SIGUSR2?
 #		This would require re-evaling all the variables after change
 trap ". $HOME/.config/peachbar/peachbar.conf; printf '%s\n' \"$TO_OUT\"" SIGUSR2
-trap 'exit 1' SIGTERM
+# from gitlab.com/mellok1488/dotfiles/panel
+trap 'trap - TERM; kill 0' INT TERM QUIT EXIT
 while read line; do
 	GrabNPrint "$line"
 done

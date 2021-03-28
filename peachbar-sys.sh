@@ -36,7 +36,8 @@ trap ". $HOME/.config/peachbar/peachbar.conf && . $HOME/.config/peachbar/peachba
 # Sleep until 10s up or signal received
 # Useful for updating audio/brightness immediately
 trap 'DUMMY=false' SIGUSR1
-trap 'exit 1' SIGTERM
+# from gitlab.com/mellok1488/dotfiles/panel
+trap 'trap - TERM; kill 0' INT TERM QUIT EXIT
 while true; do
 	STATUSLINE="%{B$MODULESBG}"
 
