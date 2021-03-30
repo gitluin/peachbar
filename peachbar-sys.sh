@@ -1,18 +1,34 @@
 #!/bin/bash
 
-if test -f "$HOME/.config/peachbar/peachbar.conf"; then
-	. "$HOME/.config/peachbar/peachbar.conf"
-else
-	echo "Missing config file: $HOME/.config/peachbar/peachbar.conf"
-	exit -1
-fi
+Configure() {
+	if test -f "$HOME/.config/peachbar/peachbar.conf"; then
+		. "$HOME/.config/peachbar/peachbar.conf"
 
-if test -f "$HOME/.config/peachbar/peachbar-modules.conf"; then
-	. "$HOME/.config/peachbar/peachbar-modules.conf"
-else
-	echo "Missing modules.conf file: $HOME/.config/peachbar/peachbar-modules.conf"
-	exit -1
-fi
+		# ------------------------------------------
+		# wal integration
+		if test "$USEWAL" = "TRUE" && test -f "$HOME/.cache/wal/colors.sh"; then
+			. "$HOME/.cache/wal/colors.sh"
+
+			BARFG="$foreground"
+			BARBG="$background"
+			INFOBG="$color1"
+			OCCCOLBG="$color2"
+			SELCOLBG="$color15"
+		fi
+	else
+		echo "Missing config file: $HOME/.config/peachbar/peachbar.conf"
+		exit -1
+	fi
+
+	if test -f "$HOME/.config/peachbar/peachbar-modules.conf"; then
+		. "$HOME/.config/peachbar/peachbar-modules.conf"
+	else
+		echo "Missing modules.conf file: $HOME/.config/peachbar/peachbar-modules.conf"
+		exit -1
+	fi
+}
+
+Configure
 
 
 # ------------------------------------------
@@ -32,7 +48,7 @@ done
 # Main loop
 # ------------------------------------------
 # Reload config files on signal
-trap ". $HOME/.config/peachbar/peachbar.conf && . $HOME/.config/peachbar/peachbar-modules.conf" SIGUSR2
+trap "Configure" SIGUSR2
 # Sleep until 10s up or signal received
 # Useful for updating audio/brightness immediately
 trap 'DUMMY=false' SIGUSR1
@@ -41,6 +57,8 @@ trap 'trap - TERM; kill 0' INT TERM QUIT EXIT
 while true; do
 	STATUSLINE="%{B$MODULESBG}"
 
+	# TODO: the DUMMY thicc trap wakes the whole statusline up, not just the
+	#	module. Do I care?
 	for MODULE in $MODULES; do
 		STATUSLINE="$STATUSLINE$($MODULE)"
 	done
@@ -48,7 +66,6 @@ while true; do
 	STATUSLINE="$STATUSLINE%{B-}"
 
 	# Write STATUSLINE to FIFO
-	#echo "PEACH{$STATUSLINE}" > "$INFF"
 	echo "$STATUSLINE" > "$INFF"
 
 	sleep 10 &

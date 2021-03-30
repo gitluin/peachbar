@@ -1,11 +1,27 @@
 #!/bin/bash
 
-if test -f "$HOME/.config/peachbar/peachbar.conf"; then
-	. "$HOME/.config/peachbar/peachbar.conf"
-else
-	echo "Missing config file: $HOME/.config/peachbar/peachbar.conf"
-	exit -1
-fi
+Configure() {
+	if test -f "$HOME/.config/peachbar/peachbar.conf"; then
+		. "$HOME/.config/peachbar/peachbar.conf"
+
+		# ------------------------------------------
+		# wal integration
+		if test "$USEWAL" = "TRUE" && test -f "$HOME/.cache/wal/colors.sh"; then
+			. "$HOME/.cache/wal/colors.sh"
+
+			BARFG="$foreground"
+			BARBG="$background"
+			INFOBG="$color1"
+			OCCCOLBG="$color2"
+			SELCOLBG="$color15"
+		fi
+	else
+		echo "Missing config file: $HOME/.config/peachbar/peachbar.conf"
+		exit -1
+	fi
+}
+
+Configure
 
 TO_OUT=""
 
@@ -70,7 +86,6 @@ ParseSara() {
 			TMPTAGS=$TAGS
 		fi
 
-		#TAGSTR="${TAGSTR}%{F$TMPFG}%{B$TMPBG}${TAGBUTTONSTART}   $(echo -e $TMPTAGS | cut -d':' -f$((i + 1)) )   ${TAGBUTTONEND}%{B$INFOBG}%{F$INFOFG}"
 		TAGSTR="${TAGSTR}%{F$TMPFG}%{B$TMPBG}${TAGBUTTONSTART}${TAGDELIMF}$(echo -e $TMPTAGS | cut -d':' -f$((i + 1)) )${TAGDELIMB}${TAGBUTTONEND}%{B$INFOBG}%{F$INFOFG}"
 	done
 	TAGSTR="${TAGSTR}${LTBUTTONSTART}${LTDELIMF}$LAYOUTSYM${LTDELIMB}${LTBUTTONEND}%{B$BARBG}%{F$BARFG}"
@@ -133,7 +148,7 @@ done
 #	Because I'm not piping anything into GrabNPrint - it needs $line
 #	Should I store the string and then reprint to lemonbar upon SIGUSR2?
 #		This would require re-evaling all the variables after change
-trap ". $HOME/.config/peachbar/peachbar.conf; printf '%s\n' \"$TO_OUT\"" SIGUSR2
+trap "Configure; printf '%s\n' \"$TO_OUT\"" SIGUSR2
 # from gitlab.com/mellok1488/dotfiles/panel
 trap 'trap - TERM; kill 0' INT TERM QUIT EXIT
 while read line; do

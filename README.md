@@ -33,12 +33,14 @@ Everything is updated every 10 seconds, unless `peachbar-sys.sh` receives `SIGUS
 * BARBG only changes in the middle part of the bar when relaunching lemonbar. Maybe replace with a "middle" section instead of setting -B?
 
 ## To-Do:
+* Big ol' refactor.
+* Standardize module printing/spacing.
+* Easily assign location of modules.
+* Option to separate layout symbol from tags (i.e. if you want tags center, layout on side).
+* Custom layout symbols.
+* Better wal integration.
 * Command line options like reloading config?
 * Alternative approach to coloring battery: acpi event sets a bash variable.
-* Better coloring in general: Xresources, etc.?
 * Separate square for icons, followed by status ([see here](https://i.redd.it/wzba8omwrdi51.png)).
-* Standardize module printing/spacing.
 * Theming guide.
-* Separate `sara` and `sys` parts - `peachbar-sara.sh` currently handles printing of the entire bar string.
-* Custom layout symbols
 * Explain examples.
