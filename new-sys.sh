@@ -11,6 +11,8 @@
 # End goal is to output this:
 #	printf "%s\n" "%{l}$MODDELIMabcdef$MODDELIM%{c}$MODDELIMghijkl$MODDELIM%{r}$MODDELIMmnopqr$MODDELIM"
 
+# TODO: Make it clear that you can't have certain strings in your bar text, or else sed will fuck with it
+
 UpdateModuleText() {
 	# TODO: Check this preserves newlines, etc.
 	LOCAL_MODULE_CONTENTS="$1"
@@ -66,39 +68,27 @@ InitStatus() {
 }
 
 
-# TODO:
-# MODULES="%{l}Network Bluetooth saraLayout%{c}saraTags%{r}Audio Brightness Network Battery Time"
-# How identify which modules are controlled by peachbar-sys?
-#	TODO: do %{l}, etc. calls have to happen once?
-#		can they happen out-of-order?
-#		if so, then modules could just output where they belong!
-#	TODO: above doesn't solve signaling issue
-#		async goal: sara info does not update at the same time as sys info
-#			more generally, all module changes don't mean others have necessarily
-#				changed.
+# async goal: sara info does not update at the same time as sys info
+#	more generally, all module changes don't mean others have necessarily
+#		changed.
 
 # 1. Parse MODULES string into left, center, and righthand
 # 2. Evaluate MODULES in order
 # 3. Async options:
-#	a. Each module forks and runs as its own process, signaling peachbar-sys.sh
-#		when it has an update. ew.
-#	b. peachbar-signal.sh requires the name of the module being updated.
-#		peachbar-sys.sh will save the output string so it can only update the
-#		section it gets signaled about. But can't pass along other arguments when
-#		signaling.
 #	c. peachbar-sys.sh reads from a fifo that tells it what needs updating.
 #		basically, a queue of to-dos.
 #		peachbar-sys.sh < $PEACHFIFO | lemonbar | sh
 #		exec "sara-interceptor.sh $SARAFIFO"
-#		i. a version of 3a - sleeps fork off and then write to the fifo when done.
+#		i. each module has a sleep that forks off and then writes the module name to $PEACHFIFO when done.
 #			peachbar-sys.sh while read line; do's things.
 #			if receive "All", then updates entire bar
-
+#			if nothing in $PEACHFIFO, no work is done!
+#		ii. peachbar-signal.sh should now push updates to $PEACHFIFO, not signal the process
+#			TODO: should reset any associated sleep timer
 
 # ParseSara Module:
 #	Must read from the INFF on its own
-#	TODO: how does sara writing to the inff trigger an update to the bar?
-#		Brute force: every sara sxhkd action also triggers peachbar-signal.sh... ew
+#	How does sara writing to the inff trigger an update to the bar?
 #		sara-interceptor.sh while read line; do's $SARAFIFO, and then spits it back
 #			into $SARAFIFO and writes to $PEACHFIFO
 
