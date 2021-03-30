@@ -1,11 +1,11 @@
 #!/bin/bash
 
 # Module text is saved in this format:
-#	%{S0}%{l}{{ModuleName}}abcdef{{ModuleName-}}%{r}{{ModuleName}}ghijkl{{ModuleName-}}\n
-#	%{S1}%{l}{{ModuleName}}mnopqr{{ModuleName-}}%{r}{{ModuleName}}stuvwx{{ModuleName-}}
+#	%{S0}%{l}{{ModuleName}}xxx{{ModuleName-}}%{r}{{ModuleName}}yyy{{ModuleName-}}\n
+#	%{S1}%{l}{{ModuleName}}zzz{{ModuleName-}}%{r}{{ModuleName}}uuu{{ModuleName-}}
 #
 # End goal is to output this:
-#	"%{S0}%{l}$MODDELIMFabcdef$MODDELIMB%{r}$MODDELIMFghijkl$MODDELIMB%{S1}%{l}$MODDELIMFmnopqr$MODDELIMB%{r}$MODDELIMFstuvwx$MODDELIMB"
+#	%{S0}%{l}$MODDELIMFxxx$MODDELIMB%{r}$MODDELIMFyyy$MODDELIMB%{S1}%{l}$MODDELIMFzzz$MODDELIMB%{r}$MODDELIMFuuu$MODDELIMB
 #
 # All modules get told what monitor they are on.
 # {{.*}} is not permitted inside your bar text, i.e. as module output.
@@ -32,7 +32,7 @@
 #			into $SARAFIFO and writes to $PEACHFIFO
 
 
-# TODO: check whole thing
+# TODO: check whole thing with dummy module output
 # Generates the inital MODULE_CONTENTS string
 InitStatus() {
 	LOCAL_MODULES="$1"
@@ -40,7 +40,7 @@ InitStatus() {
 
 	MULTI="$(xrandr -q | grep " connected" | wc -l)"
 	for (( i=0; i<$MULTI; i++ )); do
-		LOCAL_MODULE_CONTENTS="${LOCAL_MODULE_CONTENTS}%{S$i}"
+		LOCAL_MODULE_CONTENTS="${LOCAL_MODULE_CONTENTS}%{S$i}%{B$BARBG}"
 
 		ALIGNMENTS="l c r"
 		MODSLIST="$(echo $LOCAL_MODULES | sed 's/\(%{.}\)/\\n\1/g')"
@@ -55,6 +55,8 @@ InitStatus() {
 
 			LOCAL_MODULE_CONTENTS="${LOCAL_MODULE_CONTENTS}$ALIGN_OUT"
 		done
+
+		LOCAL_MODULE_CONTENTS="${LOCAL_MODULE_CONTENTS}%{B-}"
 		
 		# If not last, add newline
 		if test $((i + 1)) -ne $MULTI; then
@@ -97,7 +99,7 @@ UpdateModuleText() {
 # ------------------------------------------
 # Initialization
 # ------------------------------------------
-MODULE_CONTENTS="$(InitStatus)"
+MODULE_CONTENTS="$(InitStatus "$MODULES")"
 PrintStatus "$MODULE_CONTENTS" "$MODDELIMF" "$MODDELIMB"
 
 
@@ -110,23 +112,21 @@ while read line; do
 	# $line is a module name
 	if test "$line" != "All"; then
 		for (( i=0; i<$MULTI; i++ )); do
-			# TODO: test
 			MON_MODULE_CONTENTS="$(echo -e $MODULE_CONTENTS | grep "%{S$i}")"
 			MON_MODULE_CONTENTS="$(UpdateModuleText "$MON_MODULE_CONTENTS" "$line" $i)"
 
 			# overwrite old monline with new monline
-			MODULE_CONTENTS="$(echo -e $MODULE_CONTENTS | \
-				sed "s/%{S$i}.*/%{S$i}$MON_MODULE_CONTENTS/")"
+			# MON_MODULE_CONTENTS already contains %{S$i}
+			MODULE_CONTENTS="$(echo -e "$MODULE_CONTENTS" | \
+				sed "s/%{S$i}.*/$MON_MODULE_CONTENTS/")"
 
-			# TODO: restore formatting
-
-			#TO_OUT="${TO_OUT}%{B$BARBG}%{S$i}${STATUSLINE}%{B-}"
+			# restore formatting
+			MODULE_CONTENTS="$(echo $MODULE_CONTENTS | sed 's/ \(%{S.}\)/\\n\1/g')"
 		done
 	else
-		MODULE_CONTENTS="$(InitStatus)"
-
+		MODULE_CONTENTS="$(InitStatus "$MODULES")"
 	fi
 
-	# TODO: strip newlines before passing to PrintStatus
-	PrintStatus "$MODULE_CONTENTS" "$MODDELIMF" "$MODDELIMB"
+	TO_OUT="$(echo "$MODULE_CONTENTS" | sed 's/\\n//g')"
+	PrintStatus "$TO_OUT" "$MODDELIMF" "$MODDELIMB"
 done
