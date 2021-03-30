@@ -5,69 +5,13 @@
 #	%{S1}%{l}{{ModuleName}}mnopqr{{ModuleName-}}%{r}{{ModuleName}}stuvwx{{ModuleName-}}
 #
 # End goal is to output this:
-#	"%{S0}%{l}$MODDELIMabcdef$MODDELIM%{r}$MODDELIMghijkl$MODDELIM%{S1}%{l}$MODDELIMmnopqr$MODDELIM%{r}$MODDELIMstuvwx$MODDELIM"
-
-# TODO: Make it clear that you can't have certain strings in your bar text, or else sed will fuck with it
-# TODO: Make it clear that this most likely requires GNU sed
-
-# Only operates on single monlines
-UpdateModuleText() {
-	LOCAL_MODULE_CONTENTS="$1"
-	MODULE="$2"
-	NEWTEXT="$($MODULE "$3")"
-
-	LOCAL_MODULE_CONTENTS="$(echo $LOCAL_MODULE_CONTENTS | \
-		sed "s/\({{Module$MODULE}}\).*\({{Module$MODULE-}}\)/\1$NEWTEXT\2/")"
-
-	echo "$LOCAL_MODULE_CONTENTS"
-}
+#	"%{S0}%{l}$MODDELIMFabcdef$MODDELIMB%{r}$MODDELIMFghijkl$MODDELIMB%{S1}%{l}$MODDELIMFmnopqr$MODDELIMB%{r}$MODDELIMFstuvwx$MODDELIMB"
+#
+# All modules get told what monitor they are on.
+# {{.*}} is not permitted inside your bar text, i.e. as module output.
+# Most likely, GNU sed is required.
 
 
-# TODO: how does monitor-dependent output get treated? Say, for ParseSara?
-# 	TODO: Preferably without special treatment, i.e. as if it were any other module
-# 	Do all modules get told what monitor they are on?
-
-
-# TODO: Front and back MODDELIM
-#	Just separate sed calls with [^-}}]}} and [^}}]}}
-PrintStatus() {
-	LOCAL_MODULE_CONTENTS="$1"
-	LOCAL_MODDELIM="$2"
-
-	# Replace {{ModuleName}} and {{ModuleName-}} tags with $MODDELIMS
-	STATUSLINE="$(echo "$LOCAL_MODULE_CONTENTS" | sed "s/{{[^}}]*}}/$LOCAL_MODDELIM/g")"
-
-	printf "%s\n" "$STATUSLINE"
-}
-
-# TODO: update for new multihead format
-InitStatus() {
-	LOCAL_MODULES="$1"
-	LOCAL_MODULE_CONTENTS=""
-
-	ALIGNMENTS="l c r"
-	MODSLIST="$(echo $LOCAL_MODULES | sed 's/\(%{.}\)/\\n\1/g')"
-	for ALIGN in $ALIGNMENTS; do
-		ALIGNMODS="$(echo -e $MODSLIST | grep "%{$ALIGN}" | sed 's/%{.}//')"
-
-		ALIGN_OUT="%{$ALIGN}"
-		for ALIGNMOD in $ALIGNMODS; do
-			ALIGN_OUT="$ALIGN_OUT{{Module$ALIGNMOD}}$($ALIGNMOD){{Module$ALIGNMOD-}}"
-		done
-
-		LOCAL_MODULE_CONTENTS="$LOCAL_MODULE_CONTENTS$ALIGN_OUT"
-	done
-
-	echo "$LOCAL_MODULE_CONTENTS"
-}
-
-
-# async goal: sara info does not update at the same time as sys info
-#	more generally, all module changes don't mean others have necessarily
-#		changed.
-
-# 1. Parse MODULES string into left, center, and righthand
-# 2. Evaluate MODULES in order
 # 3. Async options:
 #	c. peachbar-sys.sh reads from a fifo that tells it what needs updating.
 #		basically, a queue of to-dos.
@@ -88,11 +32,73 @@ InitStatus() {
 #			into $SARAFIFO and writes to $PEACHFIFO
 
 
+# TODO: check whole thing
+# Generates the inital MODULE_CONTENTS string
+InitStatus() {
+	LOCAL_MODULES="$1"
+	LOCAL_MODULE_CONTENTS=""
+
+	MULTI="$(xrandr -q | grep " connected" | wc -l)"
+	for (( i=0; i<$MULTI; i++ )); do
+		LOCAL_MODULE_CONTENTS="${LOCAL_MODULE_CONTENTS}%{S$i}"
+
+		ALIGNMENTS="l c r"
+		MODSLIST="$(echo $LOCAL_MODULES | sed 's/\(%{.}\)/\\n\1/g')"
+
+		for ALIGN in $ALIGNMENTS; do
+			ALIGNMODS="$(echo -e $MODSLIST | grep "%{$ALIGN}" | sed 's/%{.}//')"
+
+			ALIGN_OUT="%{$ALIGN}"
+			for ALIGNMOD in $ALIGNMODS; do
+				ALIGN_OUT="$ALIGN_OUT{{Module$ALIGNMOD}}$($ALIGNMOD "$i"){{Module$ALIGNMOD-}}"
+			done
+
+			LOCAL_MODULE_CONTENTS="${LOCAL_MODULE_CONTENTS}$ALIGN_OUT"
+		done
+		
+		# If not last, add newline
+		if test $((i + 1)) -ne $MULTI; then
+			LOCAL_MODULE_CONTENTS="${LOCAL_MODULE_CONTENTS}\n"
+		fi
+	done
+
+	echo "$LOCAL_MODULE_CONTENTS"
+}
+
+
+# Prints MODULE_CONTENTS to lemonbar, adding in module delimeters
+PrintStatus() {
+	LOCAL_MODULE_CONTENTS="$1"
+	LOCAL_MODDELIMF="$2"
+	LOCAL_MODDELIMB="$3"
+
+	# Replace {{ModuleName}} and {{ModuleName-}} tags with $MODDELIMS
+	STATUSLINE="$(echo "$LOCAL_MODULE_CONTENTS" | \
+		sed "s/{{[^-}}]*}}/$LOCAL_MODDELIMF/g" | \
+		sed "s/{{[^}}]*}}/$LOCAL_MODDELIMB/g")"
+
+	echo -e "$STATUSLINE\n"
+}
+
+
+# Only operates on single monlines
+UpdateModuleText() {
+	LOCAL_MODULE_CONTENTS="$1"
+	MODULE="$2"
+	NEWTEXT="$($MODULE "$3")"
+
+	LOCAL_MODULE_CONTENTS="$(echo $LOCAL_MODULE_CONTENTS | \
+		sed "s/\({{Module$MODULE}}\).*\({{Module$MODULE-}}\)/\1$NEWTEXT\2/")"
+
+	echo "$LOCAL_MODULE_CONTENTS"
+}
+
+
 # ------------------------------------------
 # Initialization
 # ------------------------------------------
 MODULE_CONTENTS="$(InitStatus)"
-PrintStatus "$MODULE_CONTENTS" "$MODDELIM"
+PrintStatus "$MODULE_CONTENTS" "$MODDELIMF" "$MODDELIMB"
 
 
 # ------------------------------------------
@@ -114,11 +120,13 @@ while read line; do
 
 			# TODO: restore formatting
 
-			TO_OUT="${TO_OUT}%{B$BARBG}%{S$i}${STATUSLINE}%{B-}"
+			#TO_OUT="${TO_OUT}%{B$BARBG}%{S$i}${STATUSLINE}%{B-}"
 		done
 	else
 		MODULE_CONTENTS="$(InitStatus)"
+
 	fi
 
-	PrintStatus "$MODULE_CONTENTS" "$MODDELIM"
+	# TODO: strip newlines before passing to PrintStatus
+	PrintStatus "$MODULE_CONTENTS" "$MODDELIMF" "$MODDELIMB"
 done
