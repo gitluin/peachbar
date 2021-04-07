@@ -1,32 +1,71 @@
 #!/bin/bash
 
-# Module text is saved in this format:
+# Module text is saved in this format as MODULE_CONTENTS:
 #	%{S0}%{l}{{ModuleName}}xxx{{ModuleName-}}%{r}{{ModuleName}}yyy{{ModuleName-}}\n
 #	%{S1}%{l}{{ModuleName}}zzz{{ModuleName-}}%{r}{{ModuleName}}uuu{{ModuleName-}}
 #
-# End goal is to output this:
+# End goal is to output this STATUSLINE:
 #	%{S0}%{l}$MODDELIMFxxx$MODDELIMB%{r}$MODDELIMFyyy$MODDELIMB%{S1}%{l}$MODDELIMFzzz$MODDELIMB%{r}$MODDELIMFuuu$MODDELIMB
 #
 # All modules get told what monitor they are on.
-# {{.*}} is not permitted inside your bar text, i.e. as module output.
+# {{.*}}, %{S[0-9]}, and %{l/c/r} are not permitted inside your bar text,
+#	i.e. as module output, or as a module name. You'll screw up bar text parsing.
 # Most likely, GNU sed is required.
 
 
-# 3. Async options:
-#	c. peachbar-sys.sh reads from a fifo that tells it what needs updating.
-#		basically, a queue of to-dos.
-#		peachbar-sys.sh < $PEACHFIFO | lemonbar | sh
-#		exec "sara-interceptor.sh $SARAFIFO $PEACHFIFO"
-#		i. each module has a sleep that forks off and then writes the module name to
-#			$PEACHFIFO when done.
-#			peachbar-sys.sh while read line; do's things.
-#			if receive "All", then updates entire bar
-#			if nothing in $PEACHFIFO, no work is done!
-#		ii. peachbar-signal.sh should now push updates to $PEACHFIFO, not signal the process
-#			TODO: should reset any associated sleep timer
+# TODO: trap for peachbar stuff, and lemonbar too
+#https://gitlab.com/itmecho/dotfiles-laptop/-/blob/master/.config/lemonbar/lemonbar.sh
+
+
+# 3. Async:
+# peachbar-sys.sh reads from a fifo that tells it what needs updating.
+# 	basically, a queue of to-dos.
+# 	peachbar-sys.sh < $PEACHFIFO | lemonbar | sh &
+# 	exec "sara-interceptor.sh $SARAFIFO $PEACHFIFO"
+# 	i. each module has a sleep that forks off and then writes the module name to
+# 		$PEACHFIFO when done.
+# 		peachbar-sys.sh while read line; do's things.
+# 		if receive "All", then updates entire bar
+# 		if nothing in $PEACHFIFO, no work is done!
+# 	ii. peachbar-signal.sh should now push updates to $PEACHFIFO, not signal the process
+# 		Each module gets its own fifo? peachbar-ModuleName.fifo?
+# 			each module writes its pid to its fifo when on a timer
+# 			peachbar-signal.sh reads sleep pid from peachbar-ModuleName.fifo, and
+# 				kills it. killing it will trigger the subsequent echo. the bar update
+# 				will automatically set a new timer.
+# 			will also have to close all these related fifos, then.
+
+
+# TODO: if module doesn't call ModuleTimer, default to synchronous updates
+#	or
+# TODO: if module doesn't call ModuleTimer, use a default $INTERVAL
+# Build up another string with Y/N for async status:
+#	%{S0}%{l}Y%{c}N\n
+#	%{S1}%{l}Y%{c}N
+
+
+# sleep, get sleep pid, echo sleep pid, echo Module name when sleep done
+# https://unix.stackexchange.com/questions/427115/listen-for-exit-of-process-given-pid
+# wait doesn't work because you can't wait on someone else's child process
+function ModuleTimer() {
+      MODULENAME=$1
+      INTERVAL=$2
+      MODULEFIFO="peachbar-Module$MODULENAME.fifo"
+
+      sleep $INTERVAL &
+      MYPID=$!
+      echo $MYPID > $MODULEFIFO
+      tail --pid=$MYPID -f /dev/null && echo $MODULENAME > $PEACHFIFO &
+}
+
 
 # ParseSara Module:
 #	Must read from the INFF on its own
+#		TODO: this conflicts with the idea of running the module twice for each
+#			monitor, since reading will swallow the line
+#			TODO: outputstats() in sara.c should output one line per monitor, and
+#				identify the monitor at the beginning of the line
+#			TODO: should have same monitor numbering as lemonbar, then
 #	How does sara writing to the inff trigger an update to the bar?
 #		sara-interceptor.sh while read line; do's $SARAFIFO, and then spits it back
 #			into $SARAFIFO and writes to $PEACHFIFO
@@ -99,6 +138,16 @@ UpdateModuleText() {
 # ------------------------------------------
 # Initialization
 # ------------------------------------------
+# TODO: kill all peachbar things?
+# Kill other peachbar-sys.sh instances
+# For some reason, pgrep and 'peachbar-*.sh'
+#	don't play nice - something about the
+#	[.].
+PEACHPIDS="$(pgrep "peachbar-sys")"
+for PEACHPID in $PEACHPIDS; do
+	! test $PEACHPID = $$ && kill -9 $PEACHPID
+done
+
 MODULE_CONTENTS="$(InitStatus "$MODULES")"
 PrintStatus "$MODULE_CONTENTS" "$MODDELIMF" "$MODDELIMB"
 
