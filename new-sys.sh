@@ -1,10 +1,13 @@
 #!/bin/bash
 
-# Module text is saved in this format as MODULE_CONTENTS:
+# Modules are specified by the user with lemonbar syntax in a string:
+#	"%{S0}%{l}ModuleName ModuleName%{c}ModuleName%{r}ModuleName%{S1}%{l}ModuleName ModuleName%{c}ModuleName ModuleName%{r}"
+#
+# Module text is saved by peachbar in this format as MODULE_CONTENTS:
 #	%{S0}%{l}{{ModuleName}}xxx{{ModuleName-}}%{r}{{ModuleName}}yyy{{ModuleName-}}\n
 #	%{S1}%{l}{{ModuleName}}zzz{{ModuleName-}}%{r}{{ModuleName}}uuu{{ModuleName-}}
 #
-# End goal is to output this STATUSLINE:
+# End goal is to output this STATUSLINE to lemonbar:
 #	%{S0}%{l}$MODDELIMFxxx$MODDELIMB%{r}$MODDELIMFyyy$MODDELIMB%{S1}%{l}$MODDELIMFzzz$MODDELIMB%{r}$MODDELIMFuuu$MODDELIMB
 #
 # All modules get told what monitor they are on.
@@ -17,7 +20,7 @@
 #https://gitlab.com/itmecho/dotfiles-laptop/-/blob/master/.config/lemonbar/lemonbar.sh
 
 
-# 3. Async:
+# Async:
 # peachbar-sys.sh reads from a fifo that tells it what needs updating.
 # 	basically, a queue of to-dos.
 # 	peachbar-sys.sh < $PEACHFIFO | lemonbar | sh &
@@ -37,17 +40,17 @@
 
 
 # TODO: if module doesn't call ModuleTimer, default to synchronous updates
-#	or
+#	 Build up another string with Y/N for async status:
+#		%{S0}%{l}Y%{c}N\n
+#		%{S1}%{l}Y%{c}N
+#	~ or ~
 # TODO: if module doesn't call ModuleTimer, use a default $INTERVAL
-# Build up another string with Y/N for async status:
-#	%{S0}%{l}Y%{c}N\n
-#	%{S1}%{l}Y%{c}N
 
 
 # sleep, get sleep pid, echo sleep pid, echo Module name when sleep done
 # https://unix.stackexchange.com/questions/427115/listen-for-exit-of-process-given-pid
 # wait doesn't work because you can't wait on someone else's child process
-function ModuleTimer() {
+ModuleTimer() {
       MODULENAME=$1
       INTERVAL=$2
       MODULEFIFO="peachbar-Module$MODULENAME.fifo"
@@ -71,6 +74,38 @@ function ModuleTimer() {
 #			into $SARAFIFO and writes to $PEACHFIFO
 
 
+CleanFifos() {
+	PEACHFIFOS="$(ls /tmp/ | grep "peachbar")"
+	for TO_DEL in "$PEACHFIFOS"; do
+		sudo rm "$TO_DEL"
+	done
+}
+
+
+InitFifos() {
+	LOCAL_MODULES="$1"
+
+	MULTI="$(xrandr -q | grep " connected" | wc -l)"
+	for (( i=0; i<$MULTI; i++ )); do
+		ALIGNMENTS="l c r"
+		MODSLIST="$(echo $LOCAL_MODULES | sed 's/\(%{.}\)/\\n\1/g')"
+
+		for ALIGN in $ALIGNMENTS; do
+			# TODO: how does this behave when multiple of same module are specified
+			#	(i.e. across screens)?
+			ALIGNMODS="$(echo -e $MODSLIST | grep "%{$ALIGN}" | sed 's/%{.}//')"
+
+			ALIGN_OUT="%{$ALIGN}"
+			for ALIGNMOD in $ALIGNMODS; do
+				MODFIFO="/tmp/peachbar-Module$ALIGNMOD.fifo"
+				test -e "$MODFIFO" && ! test -p "$MODFIFO" && sudo rm "$MODFIFO"
+				test -p "$MODFIFO" || sudo mkfifo -m 777 "$MODFIFO"
+			done
+		done
+	done
+}
+
+
 # TODO: check whole thing with dummy module output
 # Generates the inital MODULE_CONTENTS string
 InitStatus() {
@@ -85,10 +120,16 @@ InitStatus() {
 		MODSLIST="$(echo $LOCAL_MODULES | sed 's/\(%{.}\)/\\n\1/g')"
 
 		for ALIGN in $ALIGNMENTS; do
+			# TODO: how does this behave when multiple of same module are specified
+			#	(i.e. across screens)?
 			ALIGNMODS="$(echo -e $MODSLIST | grep "%{$ALIGN}" | sed 's/%{.}//')"
 
 			ALIGN_OUT="%{$ALIGN}"
 			for ALIGNMOD in $ALIGNMODS; do
+				MODFIFO="/tmp/peachbar-Module$ALIGNMOD.fifo"
+				test -e "$MODFIFO" && ! test -p "$MODFIFO" && sudo rm "$MODFIFO"
+				test -p "$MODFIFO" || sudo mkfifo -m 777 "$MODFIFO"
+
 				ALIGN_OUT="$ALIGN_OUT{{Module$ALIGNMOD}}$($ALIGNMOD "$i"){{Module$ALIGNMOD-}}"
 			done
 
@@ -114,6 +155,7 @@ PrintStatus() {
 	LOCAL_MODDELIMB="$3"
 
 	# Replace {{ModuleName}} and {{ModuleName-}} tags with $MODDELIMS
+	# [^-}}] and [^}}] prevent greedy matching
 	STATUSLINE="$(echo "$LOCAL_MODULE_CONTENTS" | \
 		sed "s/{{[^-}}]*}}/$LOCAL_MODDELIMF/g" | \
 		sed "s/{{[^}}]*}}/$LOCAL_MODDELIMB/g")"
@@ -148,6 +190,7 @@ for PEACHPID in $PEACHPIDS; do
 	! test $PEACHPID = $$ && kill -9 $PEACHPID
 done
 
+InitFifos "$MODULES"
 MODULE_CONTENTS="$(InitStatus "$MODULES")"
 PrintStatus "$MODULE_CONTENTS" "$MODDELIMF" "$MODDELIMB"
 
@@ -156,6 +199,7 @@ PrintStatus "$MODULE_CONTENTS" "$MODDELIMF" "$MODDELIMB"
 # Main Loop
 # ------------------------------------------
 while read line; do
+	# TODO: lemonbar-equivalent monitor detection
 	MULTI="$(xrandr -q | grep " connected" | wc -l)"
 
 	# $line is a module name
