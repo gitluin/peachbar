@@ -1,44 +1,126 @@
 #!/bin/bash
 
-# TODO: when all is said and done, consider converting to a C program instead
-#	Modules, etc. can be offloaded to linked lists
-#	Config parsing becomes a pain in the ass
-
-# Modules are specified by the user with lemonbar syntax in a string:
-#	"%{S0}%{l}ModuleName ModuleName%{c}ModuleName%{r}ModuleName%{S1}%{l}ModuleName ModuleName%{c}ModuleName ModuleName%{r}"
-#
-# Module text is saved by peachbar in this format as MODULE_CONTENTS:
-#	%{S0}%{l}{{ModuleName}}xxx{{ModuleName-}}%{r}{{ModuleName}}yyy{{ModuleName-}}\n
-#	%{S1}%{l}{{ModuleName}}zzz{{ModuleName-}}%{r}{{ModuleName}}uuu{{ModuleName-}}
-#
-# End goal is to output this STATUSLINE to lemonbar:
-#	%{S0}%{l}$MODDELIMFxxx$MODDELIMB%{r}$MODDELIMFyyy$MODDELIMB%{S1}%{l}$MODDELIMFzzz$MODDELIMB%{r}$MODDELIMFuuu$MODDELIMB
-#
-# All modules get told what monitor they are on.
-# {{.*}}, %{S[0-9]}, and %{l/c/r} are not permitted inside your bar text,
-#	i.e. as module output, or as a module name. You'll screw up bar text parsing.
-# Most likely, GNU sed is required.
-
-
 # Async:
 # peachbar-sys.sh reads from a fifo that tells it what needs updating.
 # 	basically, a queue of to-dos.
+#	sara-interceptor.sh $SARAFIFO $PEACHFIFO &
 # 	peachbar-sys.sh < $PEACHFIFO | lemonbar | sh &
-# 	exec "sara-interceptor.sh $SARAFIFO $PEACHFIFO"
+# 	exec sara > $SARAFIFO
 # 	i. each module has a sleep that forks off and then writes the module name to
 # 		$PEACHFIFO when done.
 # 		peachbar-sys.sh while read line; do's things.
 # 		if receive "All", then updates entire bar
 # 		if nothing in $PEACHFIFO, no work is done!
 # 	ii. peachbar-signal.sh should now push updates to $PEACHFIFO, not signal the process
-# 		Each module gets its own fifo? peachbar-ModuleName.fifo?
+# 		Each module gets its own fifo, i.e. "peachbar-ModuleAudio.fifo"
 # 			each module writes its sleep pid to its fifo when on a timer
+#			TODO: are there cases where you would have to also write to $PEACHFIFO?
 # 			peachbar-signal.sh reads sleep pid from peachbar-ModuleName.fifo, and
 # 				kills it. killing it will trigger the subsequent echo. the bar update
 # 				will automatically set a new timer.
+#				TODO: what if peachbar-signal.sh blocks while reading from fifo?
+#
+#
+# Modules are specified by the user with lemonbar syntax in a string:
+#	"%{S0}%{l}Audio Network%{c}Sara%{r}Battery%{S1}%{l}Audio Network%{c}Sara Layout%{r}"
+#
+# Module text is saved by peachbar in this format as MODULE_CONTENTS:
+#	%{S0}
+#	%{l}
+#	{{ModuleAudio}}xxx{{ModuleAudio-}}
+#	%{r}
+#	{{ModuleNetwork}}yyy{{ModuleNetwork-}}
+#	%{S1}
+#	%{l}
+#	{{ModuleBattery}}zzz{{ModuleBattery-}}
+#	%{r}
+#	{{ModuleBright}}uuu{{ModuleBright-}}
+#
+# End goal is to output a fully lemonbar-prepped STATUSLINE
+#
+#
+# All modules get told what monitor they are on.
+# {{.*}} is not permitted inside your bar text, i.e. as module output, or as a
+#	module name. You'll screw up bar text parsing. Anything lemonbar is
+#	okay, though.
+# Most likely, GNU sed is required.
 
 
-# TODO: better options for wal integration in case colors are shite
+# TODO: lemonbar-equivalent monitor detection
+#	lemonbar offloads to randr when detected, XINERAMA otherwise
+#	xrandr --list-monitors?
+CountMon() {
+	echo "$(( $(xrandr --listactivemonitors | wc -l) - 1))"
+}
+
+
+# InitStatus
+#	1. detect number of screens
+#	2. if num_screen > count of %{S#} specified, copy until ==
+#	3. surround Name with {{Module____}}
+#	4. wrap Name in $()
+#	5. eval the string to generate output
+InitStatus() {
+	LOCAL_MODULES="$1"
+	MULTI="$(CountMon)"
+	NUM_SPECD="$(echo $MODULES | grep -o "S[0-9]" | wc -l)"
+
+	# TODO: test
+	while test $NUM_SPEC -lt $MULTI; do
+		NEW_TEXT="$(echo $LOCAL_MODULES | sed "s/%{S$(($NUM_SPECD - 1))}/%S{$NUM_SPECD}/")"
+		LOCAL_MODULES="$LOCAL_MODULES${NEW_TEXT}"
+		NUM_SPECD="$(( $NUM_SPECD + 1 ))"
+	done
+
+	# TODO: add monitor num variable as arg when $()ing
+	#	how do when multiple monitors?
+	# Convert "Name" to "{{ModuleName}}$(Name){{ModuleName-}}"
+	MODULE_CONTENTS="$(echo $LOCAL_MODULES | \
+		sed 's/\(%{[^}]\+}\)/\n\1\n/g' | \
+		sed 's/ /\n/g' | \
+		sed '/^$/d' | \
+		sed '/%{.*}/! s/\(.*\)/{{Module\1}}$(\1){{Module\1-}}/g')"
+
+	# Store the %{S.} tag in hold space, append to lines with a module call
+	# Remove explicit $ characters
+	# Move the . from %{S.} inside the module call
+	TO_EVAL="$(echo "$MODULE_CONTENTS" | \
+		sed -n '/%{S.}/h; /\$(.*)/G; l' | \
+		sed 's/\$$//g' | \
+		sed '/^{{/ s/\$(\(.*\))\(.*\)\\n%{S\(.\)}/$(\1 \3)\2/g')"
+
+	STATUSLINE="$(EvalModuleContents "$MODULE_CONTENTS")"
+
+	echo "$STATUSLINE"
+}
+
+
+# Any modules not detected fail here without crashing (but they will output)
+# TODO: This might mess with fifos?
+EvalModuleContents() {
+	# Must be eval'd as one line, else it will start ripping things out
+	#	linewise to try and eval them as a job
+	#	(as if you'd typed $(%{S0}), etc.)
+	LOCAL_MODULE_CONTENTS="$($1 | sed 's/ //g')"
+	TO_OUT="$(eval echo $LOCAL_MODULE_CONTENTS)"
+
+	echo "$TO_OUT"
+}
+
+
+# Accepts raw $MODULES variable
+InitFifos() {
+	# Remove lemonbar stuff, don't quote later so extra whitespace appears as one
+	INT_MODULES="$(echo "$1" | sed 's/%{[^}]\+}/ /g')"
+
+	for TO_INIT in $INT_MODULES; do
+		MODFIFO="/tmp/peachbar-Module${TO_INIT}.fifo"
+		! test -e "$MODFIFO" && sudo mkfifo -m 777 "$MODFIFO"
+	done
+}
+
+
+# TODO: user-set options should override wal
 Configure() {
 	if test -f "$HOME/.config/peachbar/peachbar.conf"; then
 		. "$HOME/.config/peachbar/peachbar.conf"
@@ -72,7 +154,9 @@ Configure() {
 #        %{S0}%{l}Y%{c}N\n
 #        %{S1}%{l}Y%{c}N
 
-
+# TODO: how handle modules like ParseSara? Require user-defined ASYNC variable?
+# TODO: not true synchronicity
+# If module is not self-async, use a default timer
 EvalModule() {
 	MODULENAME=$1
 	MODULEASYNC=$2
@@ -100,15 +184,9 @@ ModuleTimer() {
 
 # ParseSara Module:
 #	Must read from the INFF on its own
-#		TODO: this conflicts with the idea of running the module twice for each
-#			monitor, since reading will swallow the line
-#			TODO: outputstats() in sara.c should output one line per monitor, and
-#				identify the monitor at the beginning of the line
-#				TODO: this will cause "sara" > $PEACHFIFO twice, though, which doesn't
-#					jive with how this should be updating.
-#				TODO: what if sara could reply with information when asked, *or* write to
-#					fifo?
-#	How does sara writing to the inff trigger an update to the bar?
+#		sara-interceptor.sh split the single outputstats() line into N fifos, one
+#			for each monitor? Then, when ParseSara gets called, it just reads
+#			from the associated fifo!
 #		sara-interceptor.sh while read line; do's $SARAFIFO, and then spits it back
 #			into $SARAFIFO and writes to $PEACHFIFO
 
@@ -121,96 +199,26 @@ CleanFifos() {
 }
 
 
-InitFifos() {
-	LOCAL_MODULES="$1"
-	ALIGNMENTS="l c r"
-
-	MULTI="$(( $(xrandr --listactivemonitors | wc -l) - 1))"
-	for (( i=0; i<$MULTI; i++ )); do
-		if test $i -eq $(($MULTI - 1)); then
-			MON_MODULES="$(echo $LOCAL_MODULES | sed "s/.*\(%{S$i}.*\)/\1/")"
-		else
-			MON_MODULES="$(echo $LOCAL_MODULES | sed "s/.*\(%{S$i}.*\)%{S$(($i + 1))}.*/\1/")"
-		fi
-
-		MODSLIST="$(echo $MON_MODULES | sed 's/\(%{[^}]*}\)/\\n\1/g')"
-
-		for ALIGN in $ALIGNMENTS; do
-			ALIGNMODS="$(echo -e $MODSLIST | grep "%{$ALIGN}" | sed 's/%{.}//')"
-
-			ALIGN_OUT="%{$ALIGN}"
-			for ALIGNMOD in $ALIGNMODS; do
-				MODFIFO="/tmp/peachbar-Module$ALIGNMOD.fifo"
-				test -e "$MODFIFO" && ! test -p "$MODFIFO" && sudo rm "$MODFIFO"
-				test -p "$MODFIFO" || sudo mkfifo -m 777 "$MODFIFO"
-			done
-		done
-	done
-}
-
-
-# TODO: check whole thing with dummy module output
-# Generates the inital MODULE_CONTENTS string
-InitStatus() {
-	LOCAL_MODULES="$1"
-	LOCAL_MODULE_CONTENTS=""
-	ALIGNMENTS="l c r"
-
-	MULTI="$(( $(xrandr --listactivemonitors | wc -l) - 1))"
-	for (( i=0; i<$MULTI; i++ )); do
-		LOCAL_MODULE_CONTENTS="${LOCAL_MODULE_CONTENTS}%{S$i}%{B$BARBG}"
-
-		if test $i -eq $(($MULTI - 1)); then
-			MON_MODULES="$(echo $LOCAL_MODULES | sed "s/.*\(%{S$i}.*\)/\1/")"
-		else
-			MON_MODULES="$(echo $LOCAL_MODULES | sed "s/.*\(%{S$i}.*\)%{S$(($i + 1))}.*/\1/")"
-		fi
-
-		MODSLIST="$(echo $MON_MODULES | sed 's/\(%{[^}]*}\)/\\n\1/g')"
-
-		for ALIGN in $ALIGNMENTS; do
-			ALIGNMODS="$(echo -e $MODSLIST | grep "%{$ALIGN}" | sed 's/%{.}//')"
-
-			ALIGN_OUT="%{$ALIGN}"
-			for ALIGNMOD in $ALIGNMODS; do
-				MODFIFO="/tmp/peachbar-Module$ALIGNMOD.fifo"
-				test -e "$MODFIFO" && ! test -p "$MODFIFO" && sudo rm "$MODFIFO"
-				test -p "$MODFIFO" || sudo mkfifo -m 777 "$MODFIFO"
-
-				# TODO: use EvalModule instead
-				ALIGN_OUT="$ALIGN_OUT{{Module$ALIGNMOD}}$($ALIGNMOD "$i"){{Module$ALIGNMOD-}}"
-			done
-
-			LOCAL_MODULE_CONTENTS="${LOCAL_MODULE_CONTENTS}$ALIGN_OUT"
-		done
-
-		LOCAL_MODULE_CONTENTS="${LOCAL_MODULE_CONTENTS}%{B-}"
-		
-		# If not last, add newline
-		if test $((i + 1)) -ne $MULTI; then
-			LOCAL_MODULE_CONTENTS="${LOCAL_MODULE_CONTENTS}\n"
-		fi
-	done
-
-	echo "$LOCAL_MODULE_CONTENTS"
-}
-
-
 # Prints MODULE_CONTENTS to lemonbar, adding in module delimeters
 PrintStatus() {
 	LOCAL_MODULE_CONTENTS="$1"
 	LOCAL_MODDELIMF="$2"
 	LOCAL_MODDELIMB="$3"
 
+	# Remove newlines
 	# Replace {{ModuleName}} and {{ModuleName-}} tags with $MODDELIMS
 	# [^-}}] and [^}}] prevent greedy matching
-	STATUSLINE="$(echo "$LOCAL_MODULE_CONTENTS" | \
+	STATUSLINE="$(echo $LOCAL_MODULE_CONTENTS | \
+		sed 's/ //g' | \
 		sed "s/{{[^-}}]*}}/$LOCAL_MODDELIMF/g" | \
 		sed "s/{{[^}}]*}}/$LOCAL_MODDELIMB/g")"
 
 	echo -e "$STATUSLINE\n"
 }
 
+
+# TODO: when update a specific module, replace its text with $(Name), then eval
+#	the string!
 
 # Only operates on single monlines
 UpdateModuleText() {
@@ -234,6 +242,8 @@ for PEACHPID in $PEACHPIDS; do
 	! test $PEACHPID = $$ && kill -9 $PEACHPID
 done
 
+CleanFifos
+
 Configure
 InitFifos "$MODULES"
 
@@ -245,15 +255,12 @@ PrintStatus "$MODULE_CONTENTS" "$MODDELIMF" "$MODDELIMB"
 # Main Loop
 # ------------------------------------------
 # Reload config files on signal
-trap "Configure" SIGUSR1
+trap "Configure; PrintStatus $MODULE_CONTENTS $MODDELIMF $MODDELIMB" SIGUSR1
 # from gitlab.com/mellok1488/dotfiles/panel, should kill all sleeps, etc.
 trap 'trap - TERM; CleanFifos; kill 0' INT TERM QUIT EXIT
-while read line; do
-	# TODO: lemonbar-equivalent monitor detection
-	#	lemonbar offloads to randr when detected, XINERAMA otherwise
-	#	xrandr --list-monitors?
-	MULTI="$(( $(xrandr --listactivemonitors | wc -l) - 1))"
 
+# TODO: better UpdateModuleText approach
+while read line; do
 	# $line is a module name
 	if test "$line" != "All"; then
 		for (( i=0; i<$MULTI; i++ )); do
