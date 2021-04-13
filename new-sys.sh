@@ -18,7 +18,7 @@
 # 			peachbar-signal.sh reads sleep pid from peachbar-ModuleName.fifo, and
 # 				kills it. killing it will trigger the subsequent echo. the bar update
 # 				will automatically set a new timer.
-#				TODO: what if peachbar-signal.sh blocks while reading from fifo?
+#				TODO: if peachbar-signal.sh blocks while reading from fifo, it should exit
 #
 #
 # Modules are specified by the user with lemonbar syntax in a string:
@@ -40,10 +40,27 @@
 #
 #
 # All modules get told what monitor they are on.
-# {{.*}} is not permitted inside your bar text, i.e. as module output, or as a
-#	module name. You'll screw up bar text parsing. Anything lemonbar is
-#	okay, though.
-# Most likely, GNU sed is required.
+# {{.*}} and newlines are not permitted inside your bar text, i.e. as module
+#	output, or as a module name. You'll screw up bar text parsing.
+#	Anything lemonbar is okay, though.
+# TODO: dependency checks in install.sh
+# Current dependencies:
+#	lemonbar-xft
+#	GNU coreutils (mostly for GNU sed at the moment)
+#	bash (for loops)
+# TODO: explain graphical options
+# TODO: note to user that wal gets overridden
+# TODO: how handle modules like ParseSara? Require user-defined ASYNC variable?
+
+# TODO:
+# ParseSara Module:
+#	Must read from the INFF on its own
+#		sara-interceptor.sh split the single outputstats() line into N fifos, one
+#			for each monitor? Then, when ParseSara gets called, it just reads
+#			from the associated fifo!
+#		sara-interceptor.sh while read line; do's $SARAFIFO, and then spits it back
+#			into $SARAFIFO and writes to $PEACHFIFO
+
 
 
 # TODO: lemonbar-equivalent monitor detection
@@ -65,38 +82,56 @@ InitStatus() {
 	MULTI="$(CountMon)"
 	NUM_SPECD="$(echo $MODULES | grep -o "S[0-9]" | wc -l)"
 
-	# TODO: test
+	# If %{S0} not provided and it is needed, override MODULES
+	if test $NUM_SPECD -eq 0 && test $MULTI -gt 1; then
+		MODULES="%{S0}$MODULES"
+		NUM_SPECD=1
+		LOCAL_MODULES="$MODULES"
+	fi
+
 	while test $NUM_SPEC -lt $MULTI; do
-		NEW_TEXT="$(echo $LOCAL_MODULES | sed "s/%{S$(($NUM_SPECD - 1))}/%S{$NUM_SPECD}/")"
+		NEW_TEXT="$(echo $LOCAL_MODULES | sed "s/%{S0}/%S{$NUM_SPECD}/")"
 		LOCAL_MODULES="$LOCAL_MODULES${NEW_TEXT}"
 		NUM_SPECD="$(( $NUM_SPECD + 1 ))"
 	done
 
-	# TODO: add monitor num variable as arg when $()ing
-	#	how do when multiple monitors?
-	# Convert "Name" to "{{ModuleName}}$(Name){{ModuleName-}}"
+	# Convert to individual lines, then convert "Name" to
+	#	"{{ModuleName}}$(Name){{ModuleName-}}"
 	MODULE_CONTENTS="$(echo $LOCAL_MODULES | \
 		sed 's/\(%{[^}]\+}\)/\n\1\n/g' | \
 		sed 's/ /\n/g' | \
 		sed '/^$/d' | \
 		sed '/%{.*}/! s/\(.*\)/{{Module\1}}$(\1){{Module\1-}}/g')"
 
-	# Store the %{S.} tag in hold space, append to lines with a module call
+	MODULE_CONTENTS="$(InsertMonNums "$MODULE_CONTENTS")"
+
+	EVALD_CONTENTS="$(EvalModuleContents "$MODULE_CONTENTS")"
+
+	echo "$EVALD_CONTENTS"
+}
+
+
+# TODO: insert call to EvalModule in $(Module), along with async status
+InsertMonNums() {
+	LOCAL_MODULE_CONTENTS="$1"
+	MOD_TO_CHANGE="$2"
+	# All modules
+	test -z "$MOD_TO_CHANGE" && MOD_TO_CHANGE="^{{"
+
+	# Store %{S.} tags in hold space, append to lines with a module call
 	# Remove explicit $ characters
 	# Move the . from %{S.} inside the module call
-	TO_EVAL="$(echo "$MODULE_CONTENTS" | \
+	LOCAL_MODULE_CONTENTS="$(echo "$LOCAL_MODULE_CONTENTS" | \
 		sed -n '/%{S.}/h; /\$(.*)/G; l' | \
 		sed 's/\$$//g' | \
-		sed '/^{{/ s/\$(\(.*\))\(.*\)\\n%{S\(.\)}/$(\1 \3)\2/g')"
+		sed "/$MOD_TO_CHANGE/ s/\$(\(.*\))\(.*\)\\\n%{S\(.\)}/$(\1 \3)\2/g")"
 
-	STATUSLINE="$(EvalModuleContents "$MODULE_CONTENTS")"
-
-	echo "$STATUSLINE"
+	echo "$LOCAL_MODULE_CONTENTS"
 }
 
 
 # Any modules not detected fail here without crashing (but they will output)
-# TODO: This might mess with fifos?
+# TODO: Will this "command not found" end up in STDOUT, STDERR?
 EvalModuleContents() {
 	# Must be eval'd as one line, else it will start ripping things out
 	#	linewise to try and eval them as a job
@@ -120,7 +155,6 @@ InitFifos() {
 }
 
 
-# TODO: user-set options should override wal
 Configure() {
 	if test -f "$HOME/.config/peachbar/peachbar.conf"; then
 		. "$HOME/.config/peachbar/peachbar.conf"
@@ -135,6 +169,8 @@ Configure() {
 			INFOBG="$color1"
 			OCCCOLBG="$color2"
 			SELCOLBG="$color15"
+
+			. "$HOME/.config/peachbar/peachbar.conf"
 		fi
 	else
 		echo "Missing config file: $HOME/.config/peachbar/peachbar.conf"
@@ -150,12 +186,6 @@ Configure() {
 }
 
 
-# TODO: Build up another string with Y/N for async status:
-#        %{S0}%{l}Y%{c}N\n
-#        %{S1}%{l}Y%{c}N
-
-# TODO: how handle modules like ParseSara? Require user-defined ASYNC variable?
-# TODO: not true synchronicity
 # If module is not self-async, use a default timer
 EvalModule() {
 	MODULENAME=$1
@@ -180,15 +210,6 @@ ModuleTimer() {
       echo $MYPID > $MODULEFIFO
       tail --pid=$MYPID -f /dev/null && echo $MODULENAME > $PEACHFIFO &
 }
-
-
-# ParseSara Module:
-#	Must read from the INFF on its own
-#		sara-interceptor.sh split the single outputstats() line into N fifos, one
-#			for each monitor? Then, when ParseSara gets called, it just reads
-#			from the associated fifo!
-#		sara-interceptor.sh while read line; do's $SARAFIFO, and then spits it back
-#			into $SARAFIFO and writes to $PEACHFIFO
 
 
 CleanFifos() {
@@ -217,19 +238,20 @@ PrintStatus() {
 }
 
 
-# TODO: when update a specific module, replace its text with $(Name), then eval
-#	the string!
-
 # Only operates on single monlines
 UpdateModuleText() {
 	LOCAL_MODULE_CONTENTS="$1"
 	MODULE="$2"
-	NEWTEXT="$($MODULE "$3")"
 
+	# Replace text with eval call
 	LOCAL_MODULE_CONTENTS="$(echo $LOCAL_MODULE_CONTENTS | \
-		sed "s/\({{Module$MODULE}}\).*\({{Module$MODULE-}}\)/\1$NEWTEXT\2/")"
+		sed "s/\({{Module$MODULE}}\).*\({{Module$MODULE-}}\)/\1\$($MODULE)\2/")"
 
-	echo "$LOCAL_MODULE_CONTENTS"
+	LOCAL_MODULE_CONTENTS="$(InsertMonNums "$LOCAL_MODULE_CONTENTS" "$MODULE")"
+
+	EVALD_CONTENTS="$(EvalModuleContents "$MODULE_CONTENTS")"
+
+	echo "$EVALD_CONTENTS"
 }
 
 
@@ -247,6 +269,8 @@ CleanFifos
 Configure
 InitFifos "$MODULES"
 
+test -z "$DEFINTERVAL" && DEFINTERVAL=10
+
 MODULE_CONTENTS="$(InitStatus "$MODULES")"
 PrintStatus "$MODULE_CONTENTS" "$MODDELIMF" "$MODDELIMB"
 
@@ -259,26 +283,16 @@ trap "Configure; PrintStatus $MODULE_CONTENTS $MODDELIMF $MODDELIMB" SIGUSR1
 # from gitlab.com/mellok1488/dotfiles/panel, should kill all sleeps, etc.
 trap 'trap - TERM; CleanFifos; kill 0' INT TERM QUIT EXIT
 
-# TODO: better UpdateModuleText approach
 while read line; do
 	# $line is a module name
 	if test "$line" != "All"; then
-		for (( i=0; i<$MULTI; i++ )); do
-			MON_MODULE_CONTENTS="$(echo -e $MODULE_CONTENTS | grep "%{S$i}")"
-			MON_MODULE_CONTENTS="$(UpdateModuleText "$MON_MODULE_CONTENTS" "$line" $i)"
-
-			# overwrite old monline with new monline
-			# MON_MODULE_CONTENTS already contains %{S$i}
-			MODULE_CONTENTS="$(echo -e "$MODULE_CONTENTS" | \
-				sed "s/%{S$i}.*/$MON_MODULE_CONTENTS/")"
-
-			# restore formatting
-			MODULE_CONTENTS="$(echo $MODULE_CONTENTS | sed 's/ \(%{S.}\)/\\n\1/g')"
-		done
+		# Replace module text with new calls, then eval
+		MODULE_CONTENTS="$(UpdateModuleText "$MODULE_CONTENTS" "$line")"
 	else
 		MODULE_CONTENTS="$(InitStatus "$MODULES")"
 	fi
 
+	# TODO: check
 	TO_OUT="$(echo "$MODULE_CONTENTS" | sed 's/\\n//g')"
 	PrintStatus "$TO_OUT" "$MODDELIMF" "$MODDELIMB"
 done
