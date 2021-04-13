@@ -48,7 +48,7 @@
 #	lemonbar-xft
 #	GNU coreutils (mostly for GNU sed at the moment)
 #	bash (for loops)
-# TODO: explain graphical options
+# TODO: note to user about explain graphical options
 # TODO: note to user that wal gets overridden
 # TODO: note to user that additional monitors beyond what you specified
 #	are assigned the layout for S0
@@ -150,22 +150,29 @@ InsertMonNums() {
 		sed 's/\$$//g' | \
 		sed "/$MOD_TO_CHANGE/ s/\$(\(.*\))\(.*\)\\\n%{S\(.\)}/\$(EvalModule \1 \3)\2/g")"
 
-	# TODO: adjust for $MOD_TO_CHANGE
-	# Works on raw, user-defined ASYNC
-	# Insert async status after monnum
-	for ASTATUS in $ASYNC; do
-		ASREG="$(echo $ASTATUS | cut -d':' -f1)"
-		ASTAT="$(echo $ASTATUS | cut -d':' -f2)"
+	if test "$MOD_TO_CHANGE" = "^{{"; then
+		# Works on raw, user-defined ASYNC
+		# Insert async status after monnum
+		for ASTATUS in $ASYNC; do
+			ASREG="$(echo $ASTATUS | cut -d':' -f1)"
+			ASTAT="$(echo $ASTATUS | cut -d':' -f2)"
+			LOCAL_MODULE_CONTENTS="$(echo "$LOCAL_MODULE_CONTENTS" | \
+				sed "s/\$(\($ASREG.*\))/\$(\1 $ASTAT)/g")"
+		done
+	else
+		ASTAT="$(echo $ASYNC | \
+			sed "s/.*\($MOD_TO_CHANGE:.\).*/\1/g" | \
+			cut -d':' -f2)"
 		LOCAL_MODULE_CONTENTS="$(echo "$LOCAL_MODULE_CONTENTS" | \
-			sed "s/\$(\($ASREG.*\))/\$(\1 $ASTAT)/g")"
-	done
+			sed "s/\$(\($MOD_TO_CHANGE.*\))/\$(\1 $ASTAT)/g")"
+	fi
 
 	echo "$LOCAL_MODULE_CONTENTS"
 }
 
 
-# Any modules not detected fail here without crashing (but they will output)
-# TODO: Will this "command not found" end up in STDOUT, STDERR?
+# Any modules not detected fail here without crashing (but they will output),
+#	potentially to STDOUT or STDERR
 EvalModuleContents() {
 	# Must be eval'd as one line, else it will start ripping things out
 	#	linewise to try and eval them as a job
@@ -301,12 +308,10 @@ done
 CleanFifos
 
 Configure
+CleanAsync "$ASYNC" "$MODULES"
 InitFifos "$MODULES"
 
 test -z "$DEFINTERVAL" && DEFINTERVAL=10
-
-MODULE_CONTENTS="$(InitStatus "$MODULES")"
-PrintStatus "$MODULE_CONTENTS" "$MODDELIMF" "$MODDELIMB"
 
 
 # ------------------------------------------
@@ -317,6 +322,9 @@ trap "Configure; PrintStatus $MODULE_CONTENTS $MODDELIMF $MODDELIMB" SIGUSR1
 # from gitlab.com/mellok1488/dotfiles/panel, should kill all sleeps, etc.
 trap 'trap - TERM; CleanFifos; kill 0' INT TERM QUIT EXIT
 
+MODULE_CONTENTS="$(InitStatus "$MODULES")"
+PrintStatus "$MODULE_CONTENTS" "$MODDELIMF" "$MODDELIMB"
+
 while read line; do
 	# $line is a module name
 	if test "$line" != "All"; then
@@ -326,7 +334,5 @@ while read line; do
 		MODULE_CONTENTS="$(InitStatus "$MODULES")"
 	fi
 
-	# TODO: check
-	TO_OUT="$(echo "$MODULE_CONTENTS" | sed 's/\\n//g')"
-	PrintStatus "$TO_OUT" "$MODDELIMF" "$MODDELIMB"
+	PrintStatus "$MODULE_CONTENTS" "$MODDELIMF" "$MODDELIMB"
 done
