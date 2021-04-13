@@ -50,7 +50,30 @@
 #	bash (for loops)
 # TODO: explain graphical options
 # TODO: note to user that wal gets overridden
-# TODO: how handle modules like ParseSara? Require user-defined ASYNC variable?
+# TODO: note to user that additional monitors beyond what you specified
+#	are assigned the layout for S0
+# TODO: what if peachbar calls a module that is blocked?
+
+# Async status is "Y" if the module likes to update only when it has new
+#	information (like reading from a fifo), and "N" if it should be
+#	run on a timer (DEFINTERVAL). This should have no impact on
+#	performance, just on currentness of information if it *is* async.
+# ASYNC="Sara:Y Audio:Y Network:N"
+
+# Accepts raw ASYNC, MODULES
+CleanAsync() {
+	LOCAL_ASYNC="$1"
+	# Remove lemonbar stuff, don't quote later so extra whitespace appears as one
+	LOCAL_MODULES="$(echo "$2" | sed 's/%{[^}]\+}/ /g')"
+
+	for LMODULE in $LOCAL_MODULES; do
+		test -z "$(echo "$LOCAL_ASYNC" | grep -o "$LMODULE")" && \
+			LOCAL_ASYNC="${LOCAL_ASYNC} $LMODULE:N"
+	done
+
+	echo "$LOCAL_ASYNC"
+}
+
 
 # TODO:
 # ParseSara Module:
@@ -60,7 +83,6 @@
 #			from the associated fifo!
 #		sara-interceptor.sh while read line; do's $SARAFIFO, and then spits it back
 #			into $SARAFIFO and writes to $PEACHFIFO
-
 
 
 # TODO: lemonbar-equivalent monitor detection
@@ -89,8 +111,10 @@ InitStatus() {
 		LOCAL_MODULES="$MODULES"
 	fi
 
+	# If missing modules for other monitors, copy %{S0} to them
+	LOCAL_MODULES_BAK="$LOCAL_MODULES"
 	while test $NUM_SPEC -lt $MULTI; do
-		NEW_TEXT="$(echo $LOCAL_MODULES | sed "s/%{S0}/%S{$NUM_SPECD}/")"
+		NEW_TEXT="$(echo $LOCAL_MODULES_BAK | sed "s/%{S0}/%S{$NUM_SPECD}/")"
 		LOCAL_MODULES="$LOCAL_MODULES${NEW_TEXT}"
 		NUM_SPECD="$(( $NUM_SPECD + 1 ))"
 	done
@@ -111,10 +135,10 @@ InitStatus() {
 }
 
 
-# TODO: insert call to EvalModule in $(Module), along with async status
 InsertMonNums() {
 	LOCAL_MODULE_CONTENTS="$1"
 	MOD_TO_CHANGE="$2"
+	LOCAL_ASYNC="$3"
 	# All modules
 	test -z "$MOD_TO_CHANGE" && MOD_TO_CHANGE="^{{"
 
@@ -124,7 +148,17 @@ InsertMonNums() {
 	LOCAL_MODULE_CONTENTS="$(echo "$LOCAL_MODULE_CONTENTS" | \
 		sed -n '/%{S.}/h; /\$(.*)/G; l' | \
 		sed 's/\$$//g' | \
-		sed "/$MOD_TO_CHANGE/ s/\$(\(.*\))\(.*\)\\\n%{S\(.\)}/$(\1 \3)\2/g")"
+		sed "/$MOD_TO_CHANGE/ s/\$(\(.*\))\(.*\)\\\n%{S\(.\)}/\$(EvalModule \1 \3)\2/g")"
+
+	# TODO: adjust for $MOD_TO_CHANGE
+	# Works on raw, user-defined ASYNC
+	# Insert async status after monnum
+	for ASTATUS in $ASYNC; do
+		ASREG="$(echo $ASTATUS | cut -d':' -f1)"
+		ASTAT="$(echo $ASTATUS | cut -d':' -f2)"
+		LOCAL_MODULE_CONTENTS="$(echo "$LOCAL_MODULE_CONTENTS" | \
+			sed "s/\$(\($ASREG.*\))/\$(\1 $ASTAT)/g")"
+	done
 
 	echo "$LOCAL_MODULE_CONTENTS"
 }
@@ -189,8 +223,8 @@ Configure() {
 # If module is not self-async, use a default timer
 EvalModule() {
 	MODULENAME=$1
-	MODULEASYNC=$2
-	MONNUM=$3
+	MONNUM=$2
+	MODULEASYNC=$3
 	echo "$($MODULENAME $MONNUM)"
 	(test "$MODULEASYNC" != "y" || test "$MODULEASYNC" != "Y") && \
 		ModuleTimer $MODULENAME $DEFINTERVAL
