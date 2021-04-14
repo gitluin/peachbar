@@ -227,7 +227,7 @@ Configure() {
 }
 
 
-# If module is not self-async, use a default timer
+# If module is not self-managed, use a default timer
 EvalModule() {
 	MODULENAME=$1
 	MONNUM=$2

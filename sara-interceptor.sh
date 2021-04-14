@@ -24,7 +24,7 @@ while read line; do
 
 	# Output monitor info to its own fifo
 	for (( i=0; i<$MULTI; i++ )); do
-		IFIFO="sara-Mon$i.fifo"
+		IFIFO="/tmp/sara-Mon$i.fifo"
 		SplitMonline "$line" "$(($i + 1))" > $IFIFO
 	done
 
