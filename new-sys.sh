@@ -1,65 +1,18 @@
 #!/bin/bash
 
-# Async:
-# peachbar-sys.sh reads from a fifo that tells it what needs updating.
-# 	basically, a queue of to-dos.
-#	sara-interceptor.sh $SARAFIFO $PEACHFIFO &
-# 	peachbar-sys.sh < $PEACHFIFO | lemonbar | sh &
-# 	exec sara > $SARAFIFO
-# 	i. each module has a sleep that forks off and then writes the module name to
-# 		$PEACHFIFO when done.
-# 		peachbar-sys.sh while read line; do's things.
-# 		if receive "All", then updates entire bar
-# 		if nothing in $PEACHFIFO, no work is done!
-# 	ii. peachbar-signal.sh should now push updates to $PEACHFIFO, not signal the process
-# 		Each module gets its own fifo, i.e. "peachbar-ModuleAudio.fifo"
-# 			each module writes its sleep pid to its fifo when on a timer
-#			TODO: are there cases where you would have to also write to $PEACHFIFO?
-# 			peachbar-signal.sh reads sleep pid from peachbar-ModuleName.fifo, and
-# 				kills it. killing it will trigger the subsequent echo. the bar update
-# 				will automatically set a new timer.
-#				TODO: if peachbar-signal.sh blocks while reading from fifo, it should exit
-#
-#
-# Modules are specified by the user with lemonbar syntax in a string:
-#	"%{S0}%{l}Audio Network%{c}Sara%{r}Battery%{S1}%{l}Audio Network%{c}Sara Layout%{r}"
-#
-# Module text is saved by peachbar in this format as MODULE_CONTENTS:
-#	%{S0}
-#	%{l}
-#	{{ModuleAudio}}xxx{{ModuleAudio-}}
-#	%{r}
-#	{{ModuleNetwork}}yyy{{ModuleNetwork-}}
-#	%{S1}
-#	%{l}
-#	{{ModuleBattery}}zzz{{ModuleBattery-}}
-#	%{r}
-#	{{ModuleBright}}uuu{{ModuleBright-}}
-#
-# End goal is to output a fully lemonbar-prepped STATUSLINE
-#
-#
-# All modules get told what monitor they are on.
-# {{.*}} and newlines are not permitted inside your bar text, i.e. as module
-#	output, or as a module name. You'll screw up bar text parsing.
-#	Anything lemonbar is okay, though.
-# TODO: dependency checks in install.sh
-# Current dependencies:
-#	lemonbar-xft
-#	GNU coreutils (mostly for GNU sed at the moment)
-#	bash (for loops)
+# TODO: are there cases where you would have to also write to
+#	$PEACHFIFO after interrupting sleep?
+# TODO: if peachbar-signal.sh blocks while reading from fifo,
+#	it should exit.
+# TODO: if peachbar calls a module that is blocked, it should
+#	skip it
 # TODO: note to user about explain graphical options
 # TODO: note to user that wal gets overridden
 # TODO: note to user that additional monitors beyond what you specified
 #	are assigned the layout for S0
-# TODO: what if peachbar calls a module that is blocked?
 
-# Async status is "Y" if the module likes to update only when it has new
-#	information (like reading from a fifo), and "N" if it should be
-#	run on a timer (DEFINTERVAL). This should have no impact on
-#	performance, just on currentness of information if it *is* async.
-# ASYNC="Sara:Y Audio:Y Network:N"
 
+# If not specified, default to N
 # Accepts raw ASYNC, MODULES
 CleanAsync() {
 	LOCAL_ASYNC="$1"
@@ -75,21 +28,85 @@ CleanAsync() {
 }
 
 
-# TODO:
-# ParseSara Module:
-#	Must read from the INFF on its own
-#		sara-interceptor.sh split the single outputstats() line into N fifos, one
-#			for each monitor? Then, when ParseSara gets called, it just reads
-#			from the associated fifo!
-#		sara-interceptor.sh while read line; do's $SARAFIFO, and then spits it back
-#			into $SARAFIFO and writes to $PEACHFIFO
+CleanFifos() {
+	PEACHFIFOS="$(ls "/tmp/" | grep "peachbar")"
+	for TO_DEL in "$PEACHFIFOS"; do
+		sudo rm "$TO_DEL"
+	done
+}
 
+
+Configure() {
+	if test -f "$HOME/.config/peachbar/peachbar.conf"; then
+		. "$HOME/.config/peachbar/peachbar.conf"
+
+		# ------------------------------------------
+		# wal integration
+		if test "$USEWAL" = "TRUE" && test -f "$HOME/.cache/wal/colors.sh"; then
+			. "$HOME/.cache/wal/colors.sh"
+
+			BARFG="$foreground"
+			BARBG="$background"
+			INFOBG="$color1"
+			OCCCOLBG="$color2"
+			SELCOLBG="$color15"
+
+			. "$HOME/.config/peachbar/peachbar.conf"
+		fi
+	else
+		echo "Missing config file: $HOME/.config/peachbar/peachbar.conf"
+		exit -1
+	fi
+
+	if test -f "$HOME/.config/peachbar/peachbar-modules.conf"; then
+		. "$HOME/.config/peachbar/peachbar-modules.conf"
+	else
+		echo "Missing modules.conf file: $HOME/.config/peachbar/peachbar-modules.conf"
+		exit -1
+	fi
+}
 
 # TODO: lemonbar-equivalent monitor detection
 #	lemonbar offloads to randr when detected, XINERAMA otherwise
 #	xrandr --list-monitors?
 CountMon() {
 	echo "$(( $(xrandr --listactivemonitors | wc -l) - 1))"
+}
+
+
+# If module is not self-managed, use a default timer
+EvalModule() {
+	MODULENAME=$1
+	MONNUM=$2
+	MODULEASYNC=$3
+	echo "$($MODULENAME $MONNUM)"
+	(test "$MODULEASYNC" != "y" || test "$MODULEASYNC" != "Y") && \
+		ModuleTimer $MODULENAME $DEFINTERVAL
+}
+
+
+# Any modules not detected fail here without crashing (but they will output),
+#	potentially to STDOUT or STDERR
+EvalModuleContents() {
+	# Must be eval'd as one line, else it will start ripping things out
+	#	linewise to try and eval them as a job
+	#	(as if you'd typed $(%{S0}), etc.)
+	LOCAL_MODULE_CONTENTS="$($1 | sed 's/ //g')"
+	TO_OUT="$(eval echo $LOCAL_MODULE_CONTENTS)"
+
+	echo "$TO_OUT"
+}
+
+
+# Accepts raw $MODULES variable
+InitFifos() {
+	# Remove lemonbar stuff, don't quote later so extra whitespace appears as one
+	INT_MODULES="$(echo "$1" | sed 's/%{[^}]\+}/ /g')"
+
+	for TO_INIT in $INT_MODULES; do
+		MODFIFO="/tmp/peachbar-Module${TO_INIT}.fifo"
+		! test -e "$MODFIFO" && sudo mkfifo -m 777 "$MODFIFO"
+	done
 }
 
 
@@ -171,73 +188,6 @@ InsertMonNums() {
 }
 
 
-# Any modules not detected fail here without crashing (but they will output),
-#	potentially to STDOUT or STDERR
-EvalModuleContents() {
-	# Must be eval'd as one line, else it will start ripping things out
-	#	linewise to try and eval them as a job
-	#	(as if you'd typed $(%{S0}), etc.)
-	LOCAL_MODULE_CONTENTS="$($1 | sed 's/ //g')"
-	TO_OUT="$(eval echo $LOCAL_MODULE_CONTENTS)"
-
-	echo "$TO_OUT"
-}
-
-
-# Accepts raw $MODULES variable
-InitFifos() {
-	# Remove lemonbar stuff, don't quote later so extra whitespace appears as one
-	INT_MODULES="$(echo "$1" | sed 's/%{[^}]\+}/ /g')"
-
-	for TO_INIT in $INT_MODULES; do
-		MODFIFO="/tmp/peachbar-Module${TO_INIT}.fifo"
-		! test -e "$MODFIFO" && sudo mkfifo -m 777 "$MODFIFO"
-	done
-}
-
-
-Configure() {
-	if test -f "$HOME/.config/peachbar/peachbar.conf"; then
-		. "$HOME/.config/peachbar/peachbar.conf"
-
-		# ------------------------------------------
-		# wal integration
-		if test "$USEWAL" = "TRUE" && test -f "$HOME/.cache/wal/colors.sh"; then
-			. "$HOME/.cache/wal/colors.sh"
-
-			BARFG="$foreground"
-			BARBG="$background"
-			INFOBG="$color1"
-			OCCCOLBG="$color2"
-			SELCOLBG="$color15"
-
-			. "$HOME/.config/peachbar/peachbar.conf"
-		fi
-	else
-		echo "Missing config file: $HOME/.config/peachbar/peachbar.conf"
-		exit -1
-	fi
-
-	if test -f "$HOME/.config/peachbar/peachbar-modules.conf"; then
-		. "$HOME/.config/peachbar/peachbar-modules.conf"
-	else
-		echo "Missing modules.conf file: $HOME/.config/peachbar/peachbar-modules.conf"
-		exit -1
-	fi
-}
-
-
-# If module is not self-managed, use a default timer
-EvalModule() {
-	MODULENAME=$1
-	MONNUM=$2
-	MODULEASYNC=$3
-	echo "$($MODULENAME $MONNUM)"
-	(test "$MODULEASYNC" != "y" || test "$MODULEASYNC" != "Y") && \
-		ModuleTimer $MODULENAME $DEFINTERVAL
-}
-
-
 # sleep, get sleep pid, echo sleep pid, echo Module name when sleep done
 # https://unix.stackexchange.com/questions/427115/listen-for-exit-of-process-given-pid
 # wait doesn't work because you can't wait on someone else's child process
@@ -250,14 +200,6 @@ ModuleTimer() {
       MYPID=$!
       echo $MYPID > $MODULEFIFO
       tail --pid=$MYPID -f /dev/null && echo $MODULENAME > $PEACHFIFO &
-}
-
-
-CleanFifos() {
-	PEACHFIFOS="$(ls "/tmp/" | grep "peachbar")"
-	for TO_DEL in "$PEACHFIFOS"; do
-		sudo rm "$TO_DEL"
-	done
 }
 
 

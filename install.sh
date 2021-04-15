@@ -1,5 +1,11 @@
 #!/bin/sh
 
+# TODO: dependency checks
+# Current dependencies:
+#	lemonbar-xft
+#	GNU coreutils (mostly for GNU sed at the moment)
+#	bash (for loops)
+
 test -z "$1" && echo "Please provide your HOME directory as an argument" && exit -1
 
 test -z "$(pwd | grep peachbar)" && echo "Please run this script from the repo directory" && exit -1
