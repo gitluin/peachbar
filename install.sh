@@ -52,25 +52,4 @@ for CONF in $CONFFILES; do
 done
 
 
-# ------------------------------------------
-# Install battery.rules if desired
-# ------------------------------------------
-
-echo "Would you like to install battery.rules? Will skip if it would clobber an existing /etc/udev/battery.rules file. [y/N]" && read ANSWER
-if (test "$ANSWER" = "y" || test "$ANSWER" = "Y"); then
-	cp peachbar-battery.rules tmp.rules
-	sed -i "s/home\/ishmael/$HDIR/" tmp.rules
-
-	echo "Installing battery.rules..."
-	test -e /etc/udev/rules.d/battery.rules && \
-		echo "Skipping battery.rules installation to avoid clobbering. Recommend manual installation." || \
-		cp -n "tmp.rules" /etc/udev/rules.d/battery.rules
-
-	rm tmp.rules
-
-	udevadm control --reload
-else
-	echo "Skipping battery.rules installation..."
-fi
-
 echo "Done!"

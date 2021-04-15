@@ -20,12 +20,11 @@ This setup can be made to work with any window manager pretty easily, as long as
  * [GNU coreutils](https://www.gnu.org/software/coreutils/) and [GNU sed](https://www.gnu.org/software/sed/). This is basically a huge learning exercise in sed.
  * [Material Design Icons](http://google.github.io/material-design-icons/) if you plan to use the default module symbols.
  * [sxhkd](https://github.com/baskerville/sxhkd) and [sara](https://github.com/gitluin/sara) if you want sara integration.
- * `udev` and `udevadm` if you want signaling on battery state changes.
  * Any of the relevant programs for the modules listed above.
 
 ### Setting up peachbar
 Look at `examples/sxhkdrc` for a demonstration on how to use `peachbar-signal.sh` to get super snappy bar updating.
- * `sudo ./install.sh "$HOME"` installs the scripts to `/usr/local/bin/` and config files to `$HOME/.config/peachbar/`. You will also be asked if you would like to install the `udev` battery.rules.
+ * `sudo ./install.sh "$HOME"` installs the scripts to `/usr/local/bin/` and config files to `$HOME/.config/peachbar/`.
  * To use peachbar with any window manager, add `peachbar.sh &` to your `~/.xinitrc` before you `exec my-window-manager`.
  * To use peachbar with sara, add `sara-interceptor.sh $SARAFIFO $PEACHFIFO &` to `peachbar.sh` before the `peachbar-sys.sh < $PEACHFIFO | lemonbar | sh &` line and make sure the `NUMTAGS=...` line is uncommented. Naturally, this means your `~/.xinitrc` should end with `exec sara > $SARAFIFO`.
  * To properly integrate with any window manager that uses lemonbar, adjust `barh`, `barx`, `bary`, etc. or the equivalent variables for your window manger and match this with `BARH`, `BARX`, `BARY` in `peachbar.conf`.
@@ -92,9 +91,6 @@ Module symbols are specified within the module with escaped unicode characters.
 
 ## Uninstallation
  * `sudo ./uninstall.sh "$HOME"` removes the scripts and config files.
- * If you installed the `battery.rules`:
-  * `sudo rm /etc/udev/rules.d/peachbar-battery.rules`
-  * `sudo udevadm control --reload` or `sudo reboot`.
 
 ## Bugs
 
@@ -102,4 +98,3 @@ Module symbols are specified within the module with escaped unicode characters.
  * Explain examples.
  * Separate `Sara` and `SaraLayout` modules.
  * Custom layout symbols.
- * Separate square for icons, followed by status ([see here](https://i.redd.it/wzba8omwrdi51.png)).
