@@ -8,8 +8,8 @@ else
 fi
 
 # Clear out any stale fifos
-test -e "$INFF" && ! test -p "$INFF" && sudo rm "$INFF"
-test -p "$INFF" || sudo mkfifo -m 777 "$INFF"
+test -e "$PEACHFIFO" && ! test -p "$PEACHFIFO" && sudo rm "$PEACHFIFO"
+test -p "$PEACHFIFO" || sudo mkfifo -m 777 "$PEACHFIFO"
 
 # Set the number of clickable areas based on the number of tags, monitors,
 #	number of modules, and the layout symbol.
@@ -23,7 +23,7 @@ NUMCLICK="$(($NUMFIELDS * $NUMMON))"
 
 peachbar-sys.sh < "$PEACHFIFO" | lemonbar \
 	-a $NUMCLICK \
-	-g x"$BARH"+"$BARX"+"$BARY" \
+	-g "$BARW"x"$BARH"+"$BARX"+"$BARY" \
 	-d \
 	-f "$BARFONT" -f "$ICONFONT" \
 	-B "$BARBG" -F "$BARFG" \
