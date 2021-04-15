@@ -26,6 +26,4 @@ Module text is saved by peachbar in this format as MODULE_CONTENTS:
 
 End goal is to output a fully lemonbar-prepped STATUSLINE
 
-All modules get told what monitor they are on. {{.\*}} and newlines are not permitted inside your bar text, i.e. as module output, or as a module name. You'll mess up bar text parsing. Anything lemonbar is okay, though.
-
 Async status is "Y" if the module likes to update only when it has new information (like reading from a fifo), and "N" if it should be run on a timer (DEFINTERVAL). This should have no impact on performance, just on currentness of information if it *is* async.

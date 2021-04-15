@@ -8,12 +8,22 @@ else
 fi
 
 # Clear out any stale fifos
-test -e "$PEACHFIFO" && ! test -p "$PEACHFIFO" && sudo rm "$PEACHFIFO"
-test -p "$PEACHFIFO" || sudo mkfifo -m 777 "$PEACHFIFO"
+CleanFifos() {
+	PEACHFIFOS="$(ls "/tmp/" | grep "peachbar")"
+	for TO_DEL in "$PEACHFIFOS"; do
+		sudo rm "$TO_DEL"
+	done
+}
+
+CleanFifos
+
+sudo mkfifo -m 777 "$PEACHFIFO"
+
+sara-interceptor.sh "/tmp/sara.fifo" $PEACHFIFO &
 
 # Set the number of clickable areas based on the number of tags, monitors,
 #	number of modules, and the layout symbol.
-# Every module defaults to getting 2 clickables
+# Every non-sara module defaults to getting 2 clickables
 NUMTAGS="$(echo -e $(echo $TAGS | sed 's/:/\\n/g') | wc -l)"
 test -z "$NUMCLICKPERMOD" && NUMCLICKPERMOD=2
 NUMMOD="$(echo -e $(echo $MODULES | sed 's/ /\\n/g') | wc -l)"
@@ -27,4 +37,4 @@ peachbar-sys.sh < "$PEACHFIFO" | lemonbar \
 	-d \
 	-f "$BARFONT" -f "$ICONFONT" \
 	-B "$BARBG" -F "$BARFG" \
-	| sh &
+	| sh

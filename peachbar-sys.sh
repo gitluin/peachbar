@@ -36,6 +36,12 @@ CleanFifos() {
 }
 
 
+Cleanup() {
+	CleanFifos
+	kill 0
+}
+
+
 Configure() {
 	if test -f "$HOME/.config/peachbar/peachbar.conf"; then
 		. "$HOME/.config/peachbar/peachbar.conf"
@@ -53,6 +59,9 @@ Configure() {
 
 			. "$HOME/.config/peachbar/peachbar.conf"
 		fi
+
+		test -z "$DEFINTERVAL" && DEFINTERVAL=10
+
 	else
 		echo "Missing config file: $HOME/.config/peachbar/peachbar.conf"
 		exit -1
@@ -135,6 +144,23 @@ InitStatus() {
 		LOCAL_MODULES="$LOCAL_MODULES${NEW_TEXT}"
 		NUM_SPECD="$(( $NUM_SPECD + 1 ))"
 	done
+
+	# After each alignment, paste the associated color specifications
+	# Before each alignment, paste the color "resetter" (ALIGN_COLOR_END)
+	ALIGN_COLOR_END="%{F$BARFG}%{B$BARBG}"
+
+	# Properly surround alignment sections with color toggles
+	ALIGNS="l c r"
+	for ALIGN in $ALIGNS; do
+		TO_INS="$(echo $COLORS | sed -n "/%{$ALIGN}/ s/%{.}//p')"
+		LOCAL_MODULES="$(echo $LOCAL_MODULES | sed "s/%{$ALIGN}/%{$ALIGN}$TO_INS/g")"
+	done
+
+	LOCAL_MODULES="$(echo $LOCAL_MODULES | \
+		sed "s/\(%{.}\)/$ALIGN_COLOR_END\1/g" | \
+		sed "s/\(%{S[0-9]}\)$ALIGN_COLOR_END/\1/g" | \
+		sed "s/\(%{S[1-9]}\)/$ALIGN_COLOR_END\1/g" | \
+		sed "s/$/$ALIGN_COLOR_END/")"
 
 	# Convert to individual lines, then convert "Name" to
 	#	"{{ModuleName}}$(Name){{ModuleName-}}"
@@ -221,6 +247,13 @@ PrintStatus() {
 }
 
 
+ReConfigure() {
+	Configure
+	MODULE_CONTENTS="$(InitStatus "$MODULES")"
+	PrintStatus "$MODULE_CONTENTS" "$MODDELIMF" "$MODDELIMB"
+}
+
+
 # Only operates on single monlines
 UpdateModuleText() {
 	LOCAL_MODULE_CONTENTS="$1"
@@ -253,16 +286,14 @@ Configure
 CleanAsync "$ASYNC" "$MODULES"
 InitFifos "$MODULES"
 
-test -z "$DEFINTERVAL" && DEFINTERVAL=10
-
 
 # ------------------------------------------
 # Main Loop
 # ------------------------------------------
-# Reload config files on signal
-trap "Configure; PrintStatus $MODULE_CONTENTS $MODDELIMF $MODDELIMB" SIGUSR1
+# Reload config files on signal, reinit to update colors, etc.
+trap "ReConfigure" SIGUSR1
 # from gitlab.com/mellok1488/dotfiles/panel, should kill all sleeps, etc.
-trap 'trap - TERM; CleanFifos; kill 0' INT TERM QUIT EXIT
+trap 'trap - TERM; Cleanup' INT TERM QUIT EXIT
 
 MODULE_CONTENTS="$(InitStatus "$MODULES")"
 PrintStatus "$MODULE_CONTENTS" "$MODDELIMF" "$MODDELIMB"
