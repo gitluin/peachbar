@@ -10,13 +10,16 @@ fi
 # Clear out any stale fifos
 CleanFifos() {
 	PEACHFIFOS="$(ls "/tmp/" | grep "peachbar")"
-	for TO_DEL in "$PEACHFIFOS"; do
-		sudo rm "$TO_DEL"
-	done
+	if ! test -z "$PEACHFIFOS"; then
+		for TO_DEL in $PEACHFIFOS; do
+			test -e "/tmp/$TO_DEL" && sudo rm "/tmp/$TO_DEL"
+		done
+	fi
 }
 
 CleanFifos
 
+test -e "$PEACHFIFO" && sudo rm "$PEACHFIFO"
 sudo mkfifo -m 777 "$PEACHFIFO"
 
 sara-interceptor.sh "/tmp/sara.fifo" $PEACHFIFO &
@@ -37,4 +40,4 @@ peachbar-sys.sh < "$PEACHFIFO" | lemonbar \
 	-d \
 	-f "$BARFONT" -f "$ICONFONT" \
 	-B "$BARBG" -F "$BARFG" \
-	| sh
+	| sh &

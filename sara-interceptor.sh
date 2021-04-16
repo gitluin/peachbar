@@ -19,7 +19,8 @@ SplitMonline() {
 }
 
 # from gitlab.com/mellok1488/dotfiles/panel
-trap 'trap - TERM; kill 0' INT TERM QUIT EXIT
+# TODO: bad
+#trap 'trap - TERM; kill 0' TERM QUIT EXIT
 
 while read line; do
 	# TODO: lemonbar-equivalent monitor detection

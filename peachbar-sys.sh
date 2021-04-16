@@ -29,10 +29,12 @@ CleanAsync() {
 
 
 CleanFifos() {
-	PEACHFIFOS="$(ls "/tmp/" | grep "peachbar")"
-	for TO_DEL in "$PEACHFIFOS"; do
-		sudo rm "$TO_DEL"
-	done
+	PEACHFIFOS="$(ls "/tmp/" | grep "peachbar-Module")"
+	if ! test -z "$PEACHFIFOS"; then
+		for TO_DEL in $PEACHFIFOS; do
+			test -e "/tmp/$TO_DEL" && sudo rm "/tmp/$TO_DEL"
+		done
+	fi
 }
 
 
@@ -80,14 +82,22 @@ CountMon() {
 }
 
 
-# If module is not self-managed, use a default timer
 EvalModule() {
 	MODULENAME=$1
 	MONNUM=$2
 	MODULEASYNC=$3
 	echo "$($MODULENAME $MONNUM)"
-	(test "$MODULEASYNC" != "y" || test "$MODULEASYNC" != "Y") && \
-		ModuleTimer $MODULENAME $DEFINTERVAL
+
+	# If module is not self-managed, use a default timer
+	if test "$MODULEASYNC" = "N"; then
+		MODULEFIFO="peachbar-Module$MODULENAME.peachid"
+		>&2 echo meow2
+		# TODO: replace detach with just the timer - execvp?
+		detach -- peachbar-timer $MODULENAME $DEFINTERVAL $MODULEFIFO $PEACHFIFO
+		>&2 echo meow3
+	fi
+
+	>&2 echo hungus
 }
 
 
@@ -97,7 +107,7 @@ EvalModuleContents() {
 	# Must be eval'd as one line, else it will start ripping things out
 	#	linewise to try and eval them as a job
 	#	(as if you'd typed $(%{S0}), etc.)
-	LOCAL_MODULE_CONTENTS="$($1 | sed 's/} {/}{/g' | sed 's/} %/}%/g')"
+	LOCAL_MODULE_CONTENTS="$(echo $1 | sed 's/} {/}{/g' | sed 's/} %/}%/g')"
 	TO_OUT="$(eval echo $LOCAL_MODULE_CONTENTS)"
 
 	# Replace any %{FA}%{BA} formatters output by modules with the color
@@ -110,7 +120,7 @@ EvalModuleContents() {
 	#	with the last line in hold (i.e. line 2)
 	# Add explicit $ delims to line ends to remove non-module-internal
 	#	whitespace
-	TO_OUT="$(echo $LOCAL_MODULE_CONTENTS | \
+	TO_OUT="$(echo $TO_OUT | \
 		sed 's/} {/}{/g' | \
 		sed 's/} %/}%/g' | \
 		sed 's/\(%{[^}]\+}\)/\n\1\n/g' | \
@@ -118,7 +128,7 @@ EvalModuleContents() {
 		sed -n '/%{.}/,+1h; /%{FA}/g; p' | \
 		sed -n '/%{.}/,+2h; /%{BA}/g; p' | \
 		sed 's/$/{{PEACHBAR}}/g')"
-	TO_OUT="$(echo $LOCAL_MODULE_CONTENTS | \
+	TO_OUT="$(echo $TO_OUT | \
 		sed 's/{{PEACHBAR}} //g' | \
 		sed 's/{{PEACHBAR}}$//g')"
 
@@ -127,13 +137,13 @@ EvalModuleContents() {
 
 
 # Accepts raw $MODULES variable
-InitFifos() {
+InitFiles() {
 	# Remove lemonbar stuff, don't quote later so extra whitespace appears as one
 	INT_MODULES="$(echo "$1" | sed 's/%{[^}]\+}/ /g')"
 
 	for TO_INIT in $INT_MODULES; do
-		MODFIFO="/tmp/peachbar-Module${TO_INIT}.fifo"
-		! test -e "$MODFIFO" && sudo mkfifo -m 777 "$MODFIFO"
+		MODFILE="/tmp/peachbar-Module${TO_INIT}.peachid"
+		! test -e "$MODFILE" && touch "$MODFILE"
 	done
 }
 
@@ -149,8 +159,8 @@ InitStatus() {
 	MULTI="$(CountMon)"
 	NUM_SPECD="$(echo $MODULES | grep -o "S[0-9]" | wc -l)"
 
-	# If %{S0} not provided and it is needed, override MODULES
-	if test $NUM_SPECD -eq 0 && test $MULTI -gt 1; then
+	# If %{S0} not provided, add it
+	if test -z "$(echo $MODULES | grep -o "S0")"; then
 		MODULES="%{S0}$MODULES"
 		NUM_SPECD=1
 		LOCAL_MODULES="$MODULES"
@@ -158,7 +168,7 @@ InitStatus() {
 
 	# If missing modules for other monitors, copy %{S0} to them
 	LOCAL_MODULES_BAK="$LOCAL_MODULES"
-	while test $NUM_SPEC -lt $MULTI; do
+	while test $NUM_SPECD -lt $MULTI; do
 		NEW_TEXT="$(echo $LOCAL_MODULES_BAK | sed "s/%{S0}/%S{$NUM_SPECD}/")"
 		LOCAL_MODULES="$LOCAL_MODULES${NEW_TEXT}"
 		NUM_SPECD="$(( $NUM_SPECD + 1 ))"
@@ -239,12 +249,14 @@ InsertEvalArgs() {
 ModuleTimer() {
       MODULENAME=$1
       INTERVAL=$2
-      MODULEFIFO="peachbar-Module$MODULENAME.fifo"
+      MODULEFIFO="peachbar-Module$MODULENAME.peachid"
 
       sleep $INTERVAL &
       MYPID=$!
       echo $MYPID > $MODULEFIFO
+      >&2 echo fleepo
       tail --pid=$MYPID -f /dev/null && echo $MODULENAME > $PEACHFIFO &
+      >&2 echo meepo
 }
 
 
@@ -302,7 +314,7 @@ CleanFifos
 
 Configure
 ASYNC="$(CleanAsync "$ASYNC" "$MODULES")"
-InitFifos "$MODULES"
+InitFiles "$MODULES"
 
 
 # ------------------------------------------
@@ -311,19 +323,25 @@ InitFifos "$MODULES"
 # Reload config files on signal, reinit to update colors, etc.
 trap "ReConfigure" SIGUSR1
 # from gitlab.com/mellok1488/dotfiles/panel, should kill all sleeps, etc.
-trap 'trap - TERM; Cleanup' INT TERM QUIT EXIT
+# TODO: bad
+#trap 'trap - TERM; Cleanup' TERM QUIT EXIT
 
-MODULE_CONTENTS="$(InitStatus "$MODULES")"
-PrintStatus "$MODULE_CONTENTS" "$MODDELIMF" "$MODDELIMB"
+>&2 echo here1
+#MODULE_CONTENTS="$(InitStatus "$MODULES")"
+InitStatus "$MODULES"
+#>&2 echo here2
+#PrintStatus "$MODULE_CONTENTS" "$MODDELIMF" "$MODDELIMB"
+#>&2 echo here3
 
-while read line; do
-	# $line is a module name
-	if test "$line" != "All"; then
-		# Replace module text with new calls, then eval
-		MODULE_CONTENTS="$(UpdateModuleText "$MODULE_CONTENTS" "$line")"
-	else
-		MODULE_CONTENTS="$(InitStatus "$MODULES")"
-	fi
-
-	PrintStatus "$MODULE_CONTENTS" "$MODDELIMF" "$MODDELIMB"
-done
+## TODO: closes if nothing to be read?
+#while read line; do
+#	# $line is a module name
+#	if test "$line" != "All"; then
+#		# Replace module text with new calls, then eval
+#		MODULE_CONTENTS="$(UpdateModuleText "$MODULE_CONTENTS" "$line")"
+#	else
+#		MODULE_CONTENTS="$(InitStatus "$MODULES")"
+#	fi
+#
+#	PrintStatus "$MODULE_CONTENTS" "$MODDELIMF" "$MODDELIMB"
+#done

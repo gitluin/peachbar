@@ -10,7 +10,7 @@ test -z "$1" && echo "Please provide your HOME directory as an argument" && exit
 
 test -z "$(pwd | grep peachbar)" && echo "Please run this script from the repo directory" && exit -1
 
-SCRIPTDIR="/usr/local/bin"
+BINDIR="/usr/local/bin"
 
 
 # Trim any trailing / from $1
@@ -26,11 +26,11 @@ CONFDIR="$HDIR/.config/peachbar/"
 
 SCRIPTFILES="$(ls | grep '.sh')"
 
-echo "Installing peachbar scripts in $SCRIPTDIR..."
+echo "Installing peachbar scripts in $BINDIR..."
 for SCRIPT in $SCRIPTFILES; do
 	test $SCRIPT = "install.sh" && continue
 	test $SCRIPT = "uninstall.sh" && continue
-	cp "$SCRIPT" "$SCRIPTDIR"
+	cp "$SCRIPT" "$BINDIR"
 done
 
 
@@ -51,5 +51,14 @@ for CONF in $CONFFILES; do
 	cp $CONF "$CONFDIR"
 done
 
+
+# ------------------------------------------
+# Build and install peachbar-timer
+# ------------------------------------------
+
+echo "Building and installing utilities..."
+cd "./utils/"
+
+make install clean 
 
 echo "Done!"
