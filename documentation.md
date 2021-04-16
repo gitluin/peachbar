@@ -12,7 +12,7 @@ Modules are specified by the user with lemonbar syntax in a string:
       "%{S0}%{l}Audio Network%{c}Sara%{r}Battery%{S1}%{l}Audio Network%{c}Sara Layout%{r}"
 Modules may be specified without screen syntax, and the layout will be duplicated across screens (if the module supports monitor- dependent output, that will still happen).
 
-Module text is saved by peachbar in this format as MODULE_CONTENTS:
+Module text is saved by peachbar in this format as MODULE\_CONTENTS:
       %{S0}
       %{l}
       {{ModuleAudio}}xxx{{ModuleAudio-}}
