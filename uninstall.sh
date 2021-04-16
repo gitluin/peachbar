@@ -31,8 +31,3 @@ done
 
 echo "Removing $CONFDIR..."
 rm -r "$CONFDIR"
-
-
-# ------------------------------------------
-# TODO: remove battery.rules if desired
-# ------------------------------------------

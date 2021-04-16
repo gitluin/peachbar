@@ -53,9 +53,6 @@ Configure() {
 
 			BARFG="$foreground"
 			BARBG="$background"
-			INFOBG="$color1"
-			OCCCOLBG="$color2"
-			SELCOLBG="$color15"
 
 			. "$HOME/.config/peachbar/peachbar.conf"
 		fi
@@ -100,8 +97,30 @@ EvalModuleContents() {
 	# Must be eval'd as one line, else it will start ripping things out
 	#	linewise to try and eval them as a job
 	#	(as if you'd typed $(%{S0}), etc.)
-	LOCAL_MODULE_CONTENTS="$($1 | sed 's/ //g')"
+	LOCAL_MODULE_CONTENTS="$($1 | sed 's/} {/}{/g' | sed 's/} %/}%/g')"
 	TO_OUT="$(eval echo $LOCAL_MODULE_CONTENTS)"
+
+	# Replace any %{FA}%{BA} formatters output by modules with the color
+	#	formatters inserted in InsertEvalArgs after each alignment
+	#	formatter.
+	# NOTE: this will produce junk if COLORS insertion doesn't work
+	# Remove whitespace, insert newlines, delete empty lines
+	# Grab the line after the %{.} align line, overwrite %{FA}
+	# Grab the next two lines after the %{.} align line, overwrite %{BA}
+	#	with the last line in hold (i.e. line 2)
+	# Add explicit $ delims to line ends to remove non-module-internal
+	#	whitespace
+	TO_OUT="$(echo $LOCAL_MODULE_CONTENTS | \
+		sed 's/} {/}{/g' | \
+		sed 's/} %/}%/g' | \
+		sed 's/\(%{[^}]\+}\)/\n\1\n/g' | \
+		sed -n '/^$/d; p' | \
+		sed -n '/%{.}/,+1h; /%{FA}/g; p' | \
+		sed -n '/%{.}/,+2h; /%{BA}/g; p' | \
+		sed 's/$/{{PEACHBAR}}/g')"
+	TO_OUT="$(echo $LOCAL_MODULE_CONTENTS | \
+		sed 's/{{PEACHBAR}} //g' | \
+		sed 's/{{PEACHBAR}}$//g')"
 
 	echo "$TO_OUT"
 }
@@ -150,9 +169,10 @@ InitStatus() {
 	ALIGN_COLOR_END="%{F$BARFG}%{B$BARBG}"
 
 	# Properly surround alignment sections with color toggles
+	LOCAL_COLORS="$(echo $COLORS | sed 's/\(%{[lcr]}\)/\n\1/g' | sed '/^$/d')"
 	ALIGNS="l c r"
 	for ALIGN in $ALIGNS; do
-		TO_INS="$(echo $COLORS | sed -n "/%{$ALIGN}/ s/%{.}//p')"
+		TO_INS="$(echo "$LOCAL_COLORS" | sed -n "/%{$ALIGN}/ s/%{.}//p")"
 		LOCAL_MODULES="$(echo $LOCAL_MODULES | sed "s/%{$ALIGN}/%{$ALIGN}$TO_INS/g")"
 	done
 
@@ -170,7 +190,7 @@ InitStatus() {
 		sed '/^$/d' | \
 		sed '/%{.*}/! s/\(.*\)/{{Module\1}}$(\1){{Module\1-}}/g')"
 
-	MODULE_CONTENTS="$(InsertMonNums "$MODULE_CONTENTS")"
+	MODULE_CONTENTS="$(InsertEvalArgs "$MODULE_CONTENTS")"
 
 	EVALD_CONTENTS="$(EvalModuleContents "$MODULE_CONTENTS")"
 
@@ -178,10 +198,9 @@ InitStatus() {
 }
 
 
-InsertMonNums() {
+InsertEvalArgs() {
 	LOCAL_MODULE_CONTENTS="$1"
 	MOD_TO_CHANGE="$2"
-	LOCAL_ASYNC="$3"
 	# All modules
 	test -z "$MOD_TO_CHANGE" && MOD_TO_CHANGE="^{{"
 
@@ -200,14 +219,14 @@ InsertMonNums() {
 			ASREG="$(echo $ASTATUS | cut -d':' -f1)"
 			ASTAT="$(echo $ASTATUS | cut -d':' -f2)"
 			LOCAL_MODULE_CONTENTS="$(echo "$LOCAL_MODULE_CONTENTS" | \
-				sed "s/\$(\($ASREG.*\))/\$(\1 $ASTAT)/g")"
+				sed "s/\$(\(.*$ASREG.*\))/\$(\1 $ASTAT)/g")"
 		done
 	else
 		ASTAT="$(echo $ASYNC | \
 			sed "s/.*\($MOD_TO_CHANGE:.\).*/\1/g" | \
 			cut -d':' -f2)"
 		LOCAL_MODULE_CONTENTS="$(echo "$LOCAL_MODULE_CONTENTS" | \
-			sed "s/\$(\($MOD_TO_CHANGE.*\))/\$(\1 $ASTAT)/g")"
+			sed "s/\$(\(.*$MOD_TO_CHANGE.*\))/\$(\1 $ASTAT)/g")"
 	fi
 
 	echo "$LOCAL_MODULE_CONTENTS"
@@ -239,7 +258,6 @@ PrintStatus() {
 	# Replace {{ModuleName}} and {{ModuleName-}} tags with $MODDELIMS
 	# [^-}}] and [^}}] prevent greedy matching
 	STATUSLINE="$(echo $LOCAL_MODULE_CONTENTS | \
-		sed 's/ //g' | \
 		sed "s/{{[^-}}]*}}/$LOCAL_MODDELIMF/g" | \
 		sed "s/{{[^}}]*}}/$LOCAL_MODDELIMB/g")"
 
@@ -263,7 +281,7 @@ UpdateModuleText() {
 	LOCAL_MODULE_CONTENTS="$(echo $LOCAL_MODULE_CONTENTS | \
 		sed "s/\({{Module$MODULE}}\).*\({{Module$MODULE-}}\)/\1\$($MODULE)\2/")"
 
-	LOCAL_MODULE_CONTENTS="$(InsertMonNums "$LOCAL_MODULE_CONTENTS" "$MODULE")"
+	LOCAL_MODULE_CONTENTS="$(InsertEvalArgs "$LOCAL_MODULE_CONTENTS" "$MODULE")"
 
 	EVALD_CONTENTS="$(EvalModuleContents "$MODULE_CONTENTS")"
 
@@ -283,7 +301,7 @@ done
 CleanFifos
 
 Configure
-CleanAsync "$ASYNC" "$MODULES"
+ASYNC="$(CleanAsync "$ASYNC" "$MODULES")"
 InitFifos "$MODULES"
 
 
