@@ -2,8 +2,11 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <time.h>
 
 #define MAXBUF 		38
+
+// TODO: explain rammifications of MAXBUF, i.e. on max timer value (seconds)
 
 int
 slen(const char* str){
@@ -25,30 +28,48 @@ usage(){
 int
 main(int argc, char* argv[]){
 	// argv[0] 
-	// argv[1] ModuleName
-	// argv[2] Interval
-	// argv[3] ModuleFifo
-	// argv[4] PeachFifo
-	int interval, sleep_pid, fint;
+	// argv[1] do_execvp
+	// argv[2] ModuleName
+	// argv[3] Interval
+	// argv[4] ModuleFifo
+	// argv[5] PeachFifo
+	int do_execvp, interval, sleep_pid, fint;
 	char module_name[MAXBUF], module_file[MAXBUF], peach_fifo[MAXBUF], msg[MAXBUF], tmp[MAXBUF];
+	struct timespec timer, ret;
+	timer.tv_sec = 0;
+	timer.tv_nsec = 1000000L;
 
-	if (argc != 5){
+	if (argc != 6){
 		usage();
 		return 0;
 	}
 
-	snprintf(module_name, MAXBUF, "%s\n", argv[1]);
-	snprintf(tmp, MAXBUF, "%s\n", argv[2]);
+	snprintf(tmp, MAXBUF, "%s", argv[1]);
+	do_execvp = atoi(tmp);
+
+	/* If initial call, execvp to truly detach */
+	if (do_execvp){
+		argv[1] = "0";
+		// TODO: not that safe
+		execvp(argv[0], argv);
+		perror("peachbar-timer: internal execvp failed");
+	}
+
+	snprintf(module_name, MAXBUF, "%s\n", argv[2]);
+	snprintf(tmp, MAXBUF, "%s\n", argv[3]);
 	interval = atoi(tmp);
-	snprintf(module_file, MAXBUF, "%s\n", argv[3]);
-	snprintf(peach_fifo, MAXBUF, "%s\n", argv[4]);
+	snprintf(module_file, MAXBUF, "%s\n", argv[4]);
+	snprintf(peach_fifo, MAXBUF, "%s\n", argv[5]);
 	
 	sleep_pid = fork();
 	if (sleep_pid == 0){
 		setsid();
 		sleep(interval);
-		// TODO: try until you can write
-		fint = open(peach_fifo, O_WRONLY);
+
+		/* sleep for 1 ms, try again */
+		while ((fint = open(peach_fifo, O_WRONLY)) < 0){
+			nanosleep(&timer, &ret);
+		}
 		write(fint, module_name, slen(module_name));
 		close(fint);
 		exit(EXIT_SUCCESS);
@@ -56,6 +77,7 @@ main(int argc, char* argv[]){
 	} else {
 		sprintf(msg, "%d\n", sleep_pid);
 
+		/* Shouldn't have anyone else trying to open the file */
 		fint = open(module_file, O_WRONLY);
 		write(fint, msg, slen(msg));
 		close(fint);
