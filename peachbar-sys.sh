@@ -93,7 +93,7 @@ EvalModule() {
 		MODULEFIFO="peachbar-Module$MODULENAME.peachid"
 		>&2 echo meow2
 		# TODO: replace detach with just the timer - execvp?
-		detach -- peachbar-timer $MODULENAME $DEFINTERVAL $MODULEFIFO $PEACHFIFO
+		detach -- peachbar-timer '1' $MODULENAME $DEFINTERVAL $MODULEFIFO $PEACHFIFO
 		>&2 echo meow3
 	fi
 
