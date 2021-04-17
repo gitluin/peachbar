@@ -14,7 +14,7 @@ By default, there are modules for my local machine included. These are:
 
 This setup can be made to work with any window manager pretty easily, as long as you can write a shell script to get its output.
 
-[Installation/Uninstallation](https:/github.com/gitluin/peachbar/wiki/Installation)[Customization](https:/github.com/gitluin/peachbar/wiki/Customization)
+### \[[Installation/Uninstallation](https:/github.com/gitluin/peachbar/wiki/Installation)\]\[[Customization](https:/github.com/gitluin/peachbar/wiki/Customization)\]
 
 ## Bugs
 
