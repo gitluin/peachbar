@@ -90,10 +90,10 @@ EvalModule() {
 
 	# If module is not self-managed, use a default timer
 	if test "$MODULEASYNC" = "N"; then
-		MODULEFIFO="peachbar-Module$MODULENAME.peachid"
+		MODULEFILE="peachbar-Module$MODULENAME.peachid"
 		>&2 echo meow2
-		# TODO: replace detach with just the timer - execvp?
-		detach -- peachbar-timer '1' $MODULENAME $DEFINTERVAL $MODULEFIFO $PEACHFIFO
+		# TODO: does it work?
+		peachbar-timer '1' $MODULENAME $DEFINTERVAL $MODULEFILE $PEACHFIFO
 		>&2 echo meow3
 	fi
 
@@ -249,11 +249,11 @@ InsertEvalArgs() {
 ModuleTimer() {
       MODULENAME=$1
       INTERVAL=$2
-      MODULEFIFO="peachbar-Module$MODULENAME.peachid"
+      MODULEFILE="peachbar-Module$MODULENAME.peachid"
 
       sleep $INTERVAL &
       MYPID=$!
-      echo $MYPID > $MODULEFIFO
+      echo $MYPID > $MODULEFILE
       >&2 echo fleepo
       tail --pid=$MYPID -f /dev/null && echo $MODULENAME > $PEACHFIFO &
       >&2 echo meepo

@@ -5,6 +5,8 @@
 #	When the Sara module gets called, it reads from the associated fifo!
 
 
+# TODO: replace FIFO with file?
+
 SARAFIFO="$1"
 PEACHFIFO="$2"
 

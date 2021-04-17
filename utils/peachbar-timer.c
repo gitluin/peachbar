@@ -27,12 +27,13 @@ usage(){
 
 int
 main(int argc, char* argv[]){
-	// argv[0] 
-	// argv[1] do_execvp
-	// argv[2] ModuleName
-	// argv[3] Interval
-	// argv[4] ModuleFifo
-	// argv[5] PeachFifo
+	/* argv[0] 
+	 * argv[1] do_execvp
+	 * argv[2] ModuleName
+	 * argv[3] Interval
+	 * argv[4] ModuleFifo
+	 * argv[5] PeachFifo
+	 */
 	int do_execvp, interval, sleep_pid, fint;
 	char module_name[MAXBUF], module_file[MAXBUF], peach_fifo[MAXBUF], msg[MAXBUF], tmp[MAXBUF];
 	struct timespec timer, ret;
