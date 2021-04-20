@@ -38,18 +38,25 @@ done
 # Install .conf files
 # ------------------------------------------
 
-# TODO: prompt user to overwrite existing files
+echo "Install config files? Will overwrite preexisting config files. [y/n]" && read ANSWER
 
-CONFFILES="$(ls | grep '.conf')"
+if test -z "$ANSWER"; then
+	echo "Please provide an answer. Exiting..."
+	exit 0
 
-echo "Creating $CONFDIR..."
-mkdir -p "$CONFDIR"
+elif test "$ANSWER" = "Y" -o "$ANSWER" = "y"; then
+	CONFFILES="$(ls | grep '.conf')"
 
-# TODO: file permissions
-echo "Installing .conf files in $CONFDIR..."
-for CONF in $CONFFILES; do
-	cp $CONF "$CONFDIR"
-done
+	echo "Creating $CONFDIR..."
+	mkdir -p "$CONFDIR"
+
+	echo "Installing .conf files in $CONFDIR..."
+	for CONF in $CONFFILES; do
+		install -m 666 $CONF "$CONFDIR"
+	done
+else
+	echo "Skipping config install..."
+fi
 
 
 # ------------------------------------------

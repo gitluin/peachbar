@@ -4,7 +4,7 @@
 #include <unistd.h>
 #include <time.h>
 
-#define MAXBUF 		38
+#define MAXBUF 		39
 
 // TODO: explain rammifications of MAXBUF, i.e. on max timer value (seconds)
 
@@ -59,8 +59,8 @@ main(int argc, char* argv[]){
 	snprintf(module_name, MAXBUF, "%s\n", argv[2]);
 	snprintf(tmp, MAXBUF, "%s\n", argv[3]);
 	interval = atoi(tmp);
-	snprintf(module_file, MAXBUF, "%s\n", argv[4]);
-	snprintf(peach_fifo, MAXBUF, "%s\n", argv[5]);
+	snprintf(module_file, MAXBUF, "%s", argv[4]);
+	snprintf(peach_fifo, MAXBUF, "%s", argv[5]);
 	
 	sleep_pid = fork();
 	if (sleep_pid == 0){

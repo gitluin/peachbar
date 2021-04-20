@@ -90,14 +90,14 @@ EvalModule() {
 
 	# If module is not self-managed, use a default timer
 	if test "$MODULEASYNC" = "N"; then
-		MODULEFILE="peachbar-Module$MODULENAME.peachid"
-		>&2 echo meow2
-		# TODO: does it work?
-		peachbar-timer '1' $MODULENAME $DEFINTERVAL $MODULEFILE $PEACHFIFO
-		>&2 echo meow3
+		ALREADY="$(ps aux | \
+			grep "peachbar-timer [0-1] $MODULENAME.*" | \
+			sed 's/.*grep.*//g')"
+		if test -z "$ALREADY"; then
+			MODULEFILE="/tmp/peachbar-Module$MODULENAME.peachid"
+			peachbar-timer '1' $MODULENAME $DEFINTERVAL $MODULEFILE $PEACHFIFO >&2
+		fi
 	fi
-
-	>&2 echo hungus
 }
 
 
@@ -144,6 +144,7 @@ InitFiles() {
 	for TO_INIT in $INT_MODULES; do
 		MODFILE="/tmp/peachbar-Module${TO_INIT}.peachid"
 		! test -e "$MODFILE" && touch "$MODFILE"
+		chmod 666 "$MODFILE"
 	done
 }
 
@@ -326,22 +327,20 @@ trap "ReConfigure" SIGUSR1
 # TODO: bad
 #trap 'trap - TERM; Cleanup' TERM QUIT EXIT
 
->&2 echo here1
-#MODULE_CONTENTS="$(InitStatus "$MODULES")"
-InitStatus "$MODULES"
-#>&2 echo here2
-#PrintStatus "$MODULE_CONTENTS" "$MODDELIMF" "$MODDELIMB"
-#>&2 echo here3
+MODULE_CONTENTS="$(InitStatus "$MODULES")"
+#InitStatus "$MODULES"
+PrintStatus "$MODULE_CONTENTS" "$MODDELIMF" "$MODDELIMB"
 
-## TODO: closes if nothing to be read?
-#while read line; do
-#	# $line is a module name
-#	if test "$line" != "All"; then
-#		# Replace module text with new calls, then eval
-#		MODULE_CONTENTS="$(UpdateModuleText "$MODULE_CONTENTS" "$line")"
-#	else
-#		MODULE_CONTENTS="$(InitStatus "$MODULES")"
-#	fi
-#
-#	PrintStatus "$MODULE_CONTENTS" "$MODDELIMF" "$MODDELIMB"
-#done
+while test "TRUE"; do
+	read -r line
+	# $line is a module name
+	if test "$line" != "All"; then
+		# Replace module text with new calls, then eval
+		MODULE_CONTENTS="$(UpdateModuleText "$MODULE_CONTENTS" "$line")"
+	else
+		MODULE_CONTENTS="$(InitStatus "$MODULES")"
+	fi
+
+	PrintStatus "$MODULE_CONTENTS" "$MODDELIMF" "$MODDELIMB"
+	sleep 0.01
+done

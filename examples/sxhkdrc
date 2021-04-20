@@ -1,0 +1,8 @@
+XF86MonBrightness{Down,Up}
+	light -{U,A} 5 && 'peachbar-signal.sh Brightness'
+
+XF86Audio{Lower,Raise}Volume
+	amixer set Master 5%{-,+} unmute && 'peachbar-signal.sh Audio'
+
+XF86AudioMute
+	amixer set Master toggle && 'peachbar-signal.sh Audio'
