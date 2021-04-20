@@ -1,7 +1,21 @@
 #!/bin/sh
 
-SARAFIFO="$1"
-PEACHFIFO="$2"
+# sara-interceptor.sh splits sara's output into N fifos, one for each monitor.
+
+
+InitFifos() {
+	# TODO: lemonbar-equivalent monitor detection
+	#	lemonbar offloads to randr when detected, XINERAMA otherwise
+	#	xrandr --list-monitors?
+	MULTI="$(seq 1 $(( $(xrandr --listactivemonitors | wc -l) - 1)))"
+
+	for i in $MULTI; do
+		IFIFO="/tmp/sara-Mon$(($i - 1)).fifo"
+
+		test -e "$IFIFO" && ! test -p "$IFIFO" && sudo rm "$IFIFO"
+		test -p "$IFIFO" || sudo mkfifo -m 777 "$IFIFO"
+	done
+}
 
 
 SplitMonline() {
@@ -13,20 +27,21 @@ SplitMonline() {
 	echo "$SINGLE_MONLINE"
 }
 
+InitFifos
+
+
+# TODO: trap for resetting MULTI
 # from gitlab.com/mellok1488/dotfiles/panel
-trap 'trap - TERM; kill 0' INT TERM QUIT EXIT
+# TODO: bad
+#trap 'trap - TERM; kill 0' TERM QUIT EXIT
 
-while read line; do
-	# TODO: lemonbar-equivalent monitor detection
-	#	lemonbar offloads to randr when detected, XINERAMA otherwise
-	#	xrandr --list-monitors?
-	MULTI="$(( $(xrandr --listactivemonitors | wc -l) - 1))"
-
-	# Output monitor info to its own fifo
-	for (( i=0; i<$MULTI; i++ )); do
-		IFIFO="sara-Mon$i.fifo"
-		SplitMonline "$line" "$(($i + 1))" > $IFIFO
-	done
-
-	echo "ParseSara" > $PEACHFIFO
-done < $SARAFIFO
+while read -r line; do
+	if ! test -z "$line"; then
+		# Output monitor info to its own file
+		for i in $MULTI; do
+			# Index from 0, heathen!
+			IFIFO="/tmp/sara-Mon$(($i - 1)).fifo"
+			SplitMonline "$line" "$i" > $IFIFO
+		done
+	fi
+done
