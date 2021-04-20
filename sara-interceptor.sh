@@ -5,10 +5,27 @@
 #	When the Sara module gets called, it reads from the associated fifo!
 
 
-# TODO: replace FIFO with file?
-
 SARAFIFO="$1"
 PEACHFIFO="$2"
+
+
+# TODO: cleanup old files
+
+
+InitFiles() {
+	# TODO: lemonbar-equivalent monitor detection
+	#	lemonbar offloads to randr when detected, XINERAMA otherwise
+	#	xrandr --list-monitors?
+	MULTI="$(seq 1 $(( $(xrandr --listactivemonitors | wc -l) - 1)))"
+
+	for i in $MULTI; do
+		IFILE="/tmp/sara-Mon$(($i - 1)).monline"
+		if test -e "$IFILE"; then
+			touch "$IFILE"
+			chmod 666 "$IFILE"
+		fi
+	done
+}
 
 
 SplitMonline() {
@@ -20,30 +37,21 @@ SplitMonline() {
 	echo "$SINGLE_MONLINE"
 }
 
+
+# TODO: trap for resetting MULTI
 # from gitlab.com/mellok1488/dotfiles/panel
 # TODO: bad
 #trap 'trap - TERM; kill 0' TERM QUIT EXIT
-
-# TODO: trap for resetting MULTI
-# TODO: lemonbar-equivalent monitor detection
-#	lemonbar offloads to randr when detected, XINERAMA otherwise
-#	xrandr --list-monitors?
-MULTI="$(seq 1 $(( $(xrandr --listactivemonitors | wc -l) - 1)))"
-
-for i in $MULTI; do
-	IFIFO="/tmp/sara-Mon$(($i - 1)).fifo"
-	test -e "$IFIFO" || mkfifo -m 666 "$IFIFO"
-done
 
 while test "TRUE"; do
 	read -r line
 
 	if ! test -z "$line"; then
-		# Output monitor info to its own fifo
+		# Output monitor info to its own file
 		for i in $MULTI; do
 			# Index from 0, heathen!
-			IFIFO="/tmp/sara-Mon$(($i - 1)).fifo"
-			SplitMonline "$line" "$i" > $IFIFO
+			IFILE="/tmp/sara-Mon$(($i - 1)).monline"
+			SplitMonline "$line" "$i" > $IFILE
 		done
 
 		echo "Sara" > $PEACHFIFO

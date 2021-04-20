@@ -2,14 +2,8 @@
 
 # TODO: are there cases where you would have to also write to
 #	$PEACHFIFO after interrupting sleep?
-# TODO: if peachbar-signal.sh blocks while reading from fifo,
-#	it should exit.
-# TODO: if peachbar calls a module that is blocked, it should
-#	skip it
-# TODO: note to user about explain graphical options
-# TODO: note to user that wal gets overridden
-# TODO: note to user that additional monitors beyond what you specified
-#	are assigned the layout for S0
+# TODO: if peachbar-signal.sh blocks while writing to fifo, it should exit.
+# TODO: if peachbar calls a module that is blocked, it should skip it
 
 
 # If not specified, default to N
@@ -93,6 +87,9 @@ EvalModule() {
 		ALREADY="$(ps aux | \
 			grep "peachbar-timer [0-1] $MODULENAME.*" | \
 			sed 's/.*grep.*//g')"
+
+		# If module tiemr is not already running (i.e. other monitor),
+		#	start one
 		if test -z "$ALREADY"; then
 			MODULEFILE="/tmp/peachbar-Module$MODULENAME.peachid"
 			peachbar-timer '1' $MODULENAME $DEFINTERVAL $MODULEFILE $PEACHFIFO >&2

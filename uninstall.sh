@@ -27,7 +27,13 @@ done
 # Delete .config folder
 # ------------------------------------------
 
-# TODO: ask before removing CONFDIR
+echo "Would you like to remove your config files as well? [y/N]" && read ANSWER
 
-echo "Removing $CONFDIR..."
-rm -r "$CONFDIR"
+if test "$ANSWER" = "Y" -o "$ANSWER" = "y"; then
+	echo "Removing $CONFDIR..."
+	rm -r "$CONFDIR"
+else
+	echo "Leaving config files intact..."
+fi
+
+echo "Done!"

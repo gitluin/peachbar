@@ -22,20 +22,20 @@ CleanFifos
 test -e "$PEACHFIFO" && sudo rm "$PEACHFIFO"
 sudo mkfifo -m 777 "$PEACHFIFO"
 
-sara-interceptor.sh "$SARAFIFO" $PEACHFIFO &
+#sara-interceptor.sh "$SARAFIFO" $PEACHFIFO &
 
 # Set the number of clickable areas based on the number of tags, monitors,
 #	number of modules, and the layout symbol.
 # Every non-sara module defaults to getting 2 clickables
-NUMTAGS="$(echo -e $(echo $TAGS | sed 's/:/\\n/g') | wc -l)"
-test -z "$NUMCLICKPERMOD" && NUMCLICKPERMOD=2
-NUMMOD="$(echo -e $(echo $MODULES | sed 's/ /\\n/g') | wc -l)"
-NUMMON="$(xrandr -q | grep ' connected' | wc -l)"
-NUMFIELDS="$(($NUMTAGS + $(($NUMMOD * $NUMCLICKPERMOD)) + 1))"
-NUMCLICK="$(($NUMFIELDS * $NUMMON))"
+#NUMTAGS="$(echo -e $(echo $TAGS | sed 's/:/\\n/g') | wc -l)"
+#test -z "$NUMCLICKPERMOD" && NUMCLICKPERMOD=2
+#NUMMOD="$(echo -e $(echo $MODULES | sed 's/ /\\n/g') | wc -l)"
+#NUMMON="$(xrandr -q | grep ' connected' | wc -l)"
+#NUMFIELDS="$(($NUMTAGS + $(($NUMMOD * $NUMCLICKPERMOD)) + 1))"
+#NUMCLICK="$(($NUMFIELDS * $NUMMON))"
 
 peachbar-sys.sh < "$PEACHFIFO" | lemonbar \
-	-a $NUMCLICK \
+	-a 40 \
 	-g "$BARW"x"$BARH"+"$BARX"+"$BARY" \
 	-d \
 	-f "$BARFONT" \
