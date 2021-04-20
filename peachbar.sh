@@ -34,4 +34,12 @@ NUMMON="$(xrandr -q | grep ' connected' | wc -l)"
 NUMFIELDS="$(($NUMTAGS + $(($NUMMOD * $NUMCLICKPERMOD)) + 1))"
 NUMCLICK="$(($NUMFIELDS * $NUMMON))"
 
-peachbar-sys.sh < "$PEACHFIFO" | lemonbar -a $NUMCLICK -g "$BARW"x"$BARH"+"$BARX"+"$BARY" -d -f "$BARFONT" -f "$ICONFONT" -B "$BARBG" -F "$BARFG" | sh &
+peachbar-sys.sh < "$PEACHFIFO" | lemonbar \
+	-a $NUMCLICK \
+	-g "$BARW"x"$BARH"+"$BARX"+"$BARY" \
+	-d \
+	-f "$BARFONT" \
+	-f "$ICONFONT" \
+	-B "$BARBG" \
+	-F "$BARFG" \
+	| sh &
