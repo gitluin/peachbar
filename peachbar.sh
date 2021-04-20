@@ -34,7 +34,7 @@ sudo mkfifo -m 777 "$PEACHFIFO"
 #NUMFIELDS="$(($NUMTAGS + $(($NUMMOD * $NUMCLICKPERMOD)) + 1))"
 #NUMCLICK="$(($NUMFIELDS * $NUMMON))"
 
-peachbar-sys.sh < "$PEACHFIFO" | lemonbar \
+./peachbar-sys.sh < "$PEACHFIFO" | lemonbar \
 	-a 40 \
 	-g "$BARW"x"$BARH"+"$BARX"+"$BARY" \
 	-d \

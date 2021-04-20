@@ -117,17 +117,23 @@ EvalModuleContents() {
 	#	with the last line in hold (i.e. line 2)
 	# Add explicit $ delims to line ends to remove non-module-internal
 	#	whitespace
-	TO_OUT="$(echo $TO_OUT | \
-		sed 's/} {/}{/g' | \
-		sed 's/} %/}%/g' | \
-		sed 's/\(%{[^}]\+}\)/\n\1\n/g' | \
-		sed -n '/^$/d; p' | \
-		sed -n '/%{.}/,+1h; /%{FA}/g; p' | \
-		sed -n '/%{.}/,+2h; /%{BA}/g; p' | \
-		sed 's/$/{{PEACHBAR}}/g')"
-	TO_OUT="$(echo $TO_OUT | \
-		sed 's/{{PEACHBAR}} //g' | \
-		sed 's/{{PEACHBAR}}$//g')"
+#	ALIGNS="l c r"
+#	TO_OUT="$(echo "$TO_OUT" | sed 's/\(%{.}\)\(%{F[^}]*}%{B[^}]*}\)/\n\1\2\n/g')"
+#
+#	for ALIGN in $ALIGNS; do
+#
+#	done
+#	TO_OUT="$(echo $TO_OUT | \
+#		sed 's/} {/}{/g' | \
+#		sed 's/} %/}%/g' | \
+#		sed 's/\(%{[^}]\+}\)/\n\1\n/g' | \
+#		sed -n '/^$/d; p' | \
+#		sed -n '/%{.}/,+1h; /%{FA}/g; p' | \
+#		sed -n '/%{.}/,+2h; /%{BA}/g; p' | \
+#		sed 's/$/{{PEACHBAR}}/g')"
+#	TO_OUT="$(echo $TO_OUT | \
+#		sed 's/{{PEACHBAR}} //g' | \
+#		sed 's/{{PEACHBAR}}$//g')"
 
 	echo "$TO_OUT"
 }
@@ -200,9 +206,11 @@ InitStatus() {
 
 	MODULE_CONTENTS="$(InsertEvalArgs "$MODULE_CONTENTS")"
 
-	EVALD_CONTENTS="$(EvalModuleContents "$MODULE_CONTENTS")"
+	echo "$MODULE_CONTENTS"
 
-	echo "$EVALD_CONTENTS"
+	#EVALD_CONTENTS="$(EvalModuleContents "$MODULE_CONTENTS")"
+
+	#echo "$EVALD_CONTENTS"
 }
 
 
@@ -271,7 +279,7 @@ PrintStatus() {
 		sed "s/{{[^-}}]*}}/$LOCAL_MODDELIMF/g" | \
 		sed "s/{{[^}}]*}}/$LOCAL_MODDELIMB/g")"
 
-	echo -e "$STATUSLINE\n"
+	echo "$STATUSLINE"
 }
 
 
@@ -324,20 +332,28 @@ trap "ReConfigure" SIGUSR1
 # TODO: bad
 #trap 'trap - TERM; Cleanup' TERM QUIT EXIT
 
-MODULE_CONTENTS="$(InitStatus "$MODULES")"
+#MODULE_CONTENTS="$(InitStatus "$MODULES")"
 #InitStatus "$MODULES"
-PrintStatus "$MODULE_CONTENTS" "$MODDELIMF" "$MODDELIMB"
+#echo "$MODULE_CONTENTS"
+#>&2 echo "$MODULE_CONTENTS"
+#>&2 PrintStatus "$MODULE_CONTENTS" "$MODDELIMF" "$MODDELIMB"
+#while test "TRUE"; do
+#	#>&2 echo "$MODULE_CONTENTS"
+#	PrintStatus "$MODULE_CONTENTS" "$MODDELIMF" "$MODDELIMB"
+#	#>&2 PrintStatus "$MODULE_CONTENTS" "$MODDELIMF" "$MODDELIMB"
+#	sleep 2
+#done
 
-while test "TRUE"; do
-	read -r line
-	# $line is a module name
-	if test "$line" != "All"; then
-		# Replace module text with new calls, then eval
-		MODULE_CONTENTS="$(UpdateModuleText "$MODULE_CONTENTS" "$line")"
-	else
-		MODULE_CONTENTS="$(InitStatus "$MODULES")"
-	fi
-
-	PrintStatus "$MODULE_CONTENTS" "$MODDELIMF" "$MODDELIMB"
-	sleep 0.01
-done
+#while test "TRUE"; do
+#	read -r line
+#	# $line is a module name
+#	if test "$line" != "All"; then
+#		# Replace module text with new calls, then eval
+#		MODULE_CONTENTS="$(UpdateModuleText "$MODULE_CONTENTS" "$line")"
+#	else
+#		MODULE_CONTENTS="$(InitStatus "$MODULES")"
+#	fi
+#
+#	PrintStatus "$MODULE_CONTENTS" "$MODDELIMF" "$MODDELIMB"
+#	sleep 0.01
+#done
